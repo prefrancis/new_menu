@@ -428,6 +428,9 @@ fieldset legend{ padding:0; margin-bottom:6px; }
   width:100%; border:2px solid var(--line); border-radius:var(--radius-sm); padding:12px; margin-bottom:12px;
   text-align:center; font-size:15px; background:var(--cream);
 }
+.adminLogin__hint{ display:block; margin-top:12px; color:var(--ink-soft); font-size:11.5px; }
+.adminLogin__hint code{ background:var(--pink-soft); color:var(--pink-dark); padding:2px 7px; border-radius:6px; font-family:var(--font-mono); font-weight:700; }
+.field__hint{ font-weight:600; font-size:11.5px; color:var(--ink-soft); }
 .adminLogin__error{ color:var(--pink-dark); font-size:12.5px; margin-top:10px; font-weight:700; }
 
 .statRow{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:14px 0; }
