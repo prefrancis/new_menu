@@ -59,12 +59,13 @@
 <main class="view" id="view-tracker" hidden>
   <div class="panelHead">
     <h2>Orders</h2>
-    <p>Orders placed this visit show automatically. Reopening the site later? Search by name or ticket number.</p>
+    <p>Orders you place on this device show up here automatically. On another phone or browser? Look up your order with your ticket number and the name you used.</p>
   </div>
 
   <div class="trackerSearch">
-    <input type="text" id="trackerSearchInput" placeholder="Search by ticket # (e.g. SC-0007) or your name…">
-    <button class="btn btn--primary" id="trackerSearchBtn">Search</button>
+    <input type="text" id="trackerTicketInput" placeholder="Ticket # (e.g. SC-0007)" autocomplete="off">
+    <input type="text" id="trackerNameInput" placeholder="Name used on the order" autocomplete="off">
+    <button class="btn btn--primary" id="trackerSearchBtn">Find order</button>
   </div>
 
   <div class="trackerList" id="trackerList"></div>
@@ -77,10 +78,10 @@
     <div class="adminLogin__card">
       <span class="adminLogin__icon">🔒</span>
       <h2>Staff Sign-In</h2>
-      <p>Sugar Crush staff only. Enter the staff passcode to view and manage today's orders.</p>
-      <input type="password" id="adminPass" placeholder="Staff Passcode">
+      <p>Sugar Crush staff only. Sign in with your staff account to view and manage orders.</p>
+      <input type="email" id="adminEmail" placeholder="Staff email" autocomplete="username">
+      <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password">
       <button class="btn btn--primary" id="adminLoginBtn">Sign In</button>
-      <small class="adminLogin__hint">Passcode: <code id="adminHint"></code></small>
       <p class="adminLogin__error" id="adminError" hidden>Incorrect passcode. Try again.</p>
     </div>
   </div>
