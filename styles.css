@@ -382,9 +382,9 @@ fieldset legend{ padding:0; margin-bottom:6px; }
 .panelHead p{ color:var(--ink-soft); font-size:13.5px; margin-top:4px; }
 .panelHead--row{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
 
-.trackerSearch{ display:flex; gap:8px; padding:14px 0; }
+.trackerSearch{ display:flex; flex-wrap:wrap; gap:8px; padding:14px 0; }
 .trackerSearch input{
-  flex:1; min-width:0; border:2px solid var(--line); border-radius:999px; padding:10px 16px; font-size:13.5px;
+  flex:1 1 150px; min-width:0; border:2px solid var(--line); border-radius:999px; padding:10px 16px; font-size:13.5px;
   background:var(--white);
 }
 .trackerSearch .btn{ padding:10px 20px; font-size:13.5px; }
