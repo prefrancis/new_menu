@@ -21,11 +21,9 @@ const MAX_QTY_PER_ITEM = 100;   // max cups per menu item, per order (all sizes/
 
 const ADMIN_PASSCODE = "sugarcrush2026"; // demo only — replace with real auth for production
 
-// Pickup slots are generated from these (24-hour clock)
-const OPEN_HOUR = 10;           // first pickup slot  -> 10:00 AM
-const CLOSE_HOUR = 21;          // last pickup slot   ->  9:00 PM
-const SLOT_MINUTES = 30;        // gap between slots
-const PREP_MINUTES = 15;        // earliest a slot can be booked from "now"
+// Pickup time the customer can type in (24-hour "HH:MM")
+const PICKUP_OPEN = "08:00";    // 8:00 AM
+const PICKUP_CLOSE = "16:00";   // 4:00 PM
 
 /* ---------------------------------------------------------
    2. EDIT YOUR MENU HERE  (prices from the shop's menu board)
@@ -155,7 +153,7 @@ function mapRow(row) {
     ticketNumber: row.ticket_number,
     ticket: formatTicket(row.ticket_number),
     studentName: row.student_name,       // customer name
-    studentSection: row.student_section, // customer mobile number
+    studentSection: row.student_section, // grade & section
     pickupTime: row.pickup_time,
     payment: row.payment_method,
     gcashRef: row.gcash_ref,
@@ -355,8 +353,7 @@ function buildDrinkCard(item) {
    cart line is stored in `items` as { name, qty, price } where `name`
    carries the size / sweetness / add-ons, e.g.
    "Wintermelon (L, 50% sugar, +Tapioca Pearls)" and `price` is the
-   per-cup price including add-ons. The mobile number is stored in the
-   existing `student_section` column.
+   per-cup price including add-ons.
 --------------------------------------------------------- */
 const lineKeyOf = (l) => [l.itemId, l.optKey, l.sugar, [...l.addons].sort().join("+")].join("|");
 
@@ -610,47 +607,31 @@ const checkoutOverlay = el("checkoutOverlay");
 const checkoutForm = el("checkoutForm");
 const gcashBox = el("gcashBox");
 
-// Build pickup choices: "As soon as possible" + time slots from now until closing
-function buildPickupOptions() {
-  const sel = el("pickupTime");
-  const keep = sel.value;
-  sel.innerHTML = `<option value="">Select a pickup time…</option>`;
-
-  const fmt = (d) => d.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
-  const now = new Date();
-  const earliest = new Date(now.getTime() + PREP_MINUTES * 60000);
-
-  const slotsFor = (base) => {
-    const out = [];
-    let d = new Date(base); d.setHours(OPEN_HOUR, 0, 0, 0);
-    const end = new Date(base); end.setHours(CLOSE_HOUR, 0, 0, 0);
-    for (; d <= end; d = new Date(d.getTime() + SLOT_MINUTES * 60000)) out.push(new Date(d));
-    return out;
-  };
-
-  let today = slotsFor(now).filter((d) => d >= earliest);
-  let prefix = "";
-  if (today.length) {
-    sel.insertAdjacentHTML("beforeend", `<option>As soon as possible (about ${PREP_MINUTES}–20 mins)</option>`);
-  } else {
-    const tmr = new Date(now.getTime() + 86400000);
-    today = slotsFor(tmr);
-    prefix = "Tomorrow — ";
-  }
-  today.forEach((d) => sel.insertAdjacentHTML("beforeend", `<option>${prefix}${fmt(d)}</option>`));
-  if ([...sel.options].some((o) => o.value === keep)) sel.value = keep;
+// "13:05" -> "1:05 PM"
+function formatTime12(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
 function openCheckout() {
   if (cartLines().length === 0) return;
   closeCart();
-  buildPickupOptions();
+  const pt = el("pickupTime");
+  pt.min = PICKUP_OPEN;
+  pt.max = PICKUP_CLOSE;
+  document.querySelector(".field__hint").textContent = `Pickup hours: ${formatTime12(PICKUP_OPEN)} – ${formatTime12(PICKUP_CLOSE)}`;
   renderCheckoutSummary();
   checkoutOverlay.classList.add("is-open");
 }
 function closeCheckout() { checkoutOverlay.classList.remove("is-open"); }
 checkoutBtn.addEventListener("click", openCheckout);
 el("closeCheckout").addEventListener("click", closeCheckout);
+
+// GCash number: digits only, max 11
+el("gcashRef").addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/\D/g, "").slice(0, 11);
+  e.target.style.borderColor = "";
+});
 
 document.querySelectorAll('input[name="payment"]').forEach((r) => {
   r.addEventListener("change", (e) => { gcashBox.hidden = e.target.value !== "gcash"; });
@@ -667,9 +648,18 @@ checkoutForm.addEventListener("submit", async (e) => {
   const payment = document.querySelector('input[name="payment"]:checked').value;
   const gcashRef = el("gcashRef").value.trim();
 
-  if (payment === "gcash" && !gcashRef) {
+  if (payment === "gcash" && !/^\d{11}$/.test(gcashRef)) {
     el("gcashRef").focus();
     el("gcashRef").style.borderColor = "var(--pink)";
+    toast("GCash number must be exactly 11 digits.");
+    return;
+  }
+
+  // Pickup time must be typed in and fall inside pickup hours
+  const pickupRaw = el("pickupTime").value;
+  if (!pickupRaw || pickupRaw < PICKUP_OPEN || pickupRaw > PICKUP_CLOSE) {
+    el("pickupTime").focus();
+    toast(`Pickup time must be between ${formatTime12(PICKUP_OPEN)} and ${formatTime12(PICKUP_CLOSE)}.`);
     return;
   }
 
@@ -678,13 +668,13 @@ checkoutForm.addEventListener("submit", async (e) => {
   if (overLimit) { toast(`${overLimit.name}: max ${MAX_QTY_PER_ITEM} per order.`); return; }
 
   const customerName = el("studentName").value.trim();
-  const customerPhone = el("studentSection").value.trim();
-  const pickupTime = el("pickupTime").value;
+  const customerSection = el("studentSection").value.trim();
+  const pickupTime = formatTime12(pickupRaw);
   const lines = cartLines();
 
   const payload = {
     student_name: customerName,
-    student_section: customerPhone,
+    student_section: customerSection,
     pickup_time: pickupTime,
     payment_method: payment,
     gcash_ref: payment === "gcash" ? gcashRef : null,
@@ -727,7 +717,7 @@ function showConfirmation(order) {
   const itemsList = order.items.map((i) => `${i.qty}× ${esc(i.name)}`).join("<br>");
   el("confirmDetails").innerHTML = `
     <div class="row"><span>Name</span><b>${esc(order.studentName)}</b></div>
-    <div class="row"><span>Mobile</span><b>${esc(order.studentSection)}</b></div>
+    <div class="row"><span>Section</span><b>${esc(order.studentSection)}</b></div>
     <div class="row"><span>Pickup</span><b>${esc(order.pickupTime)}</b></div>
     <div class="row"><span>Items</span><b>${itemsList}</b></div>
     <div class="row"><span>Payment</span><b>${order.payment === "gcash" ? "GCash (pending verification)" : "Cash on pickup"}</b></div>
@@ -852,6 +842,7 @@ function buildOrderCard(o, isAdmin) {
 /* ---------------------------------------------------------
    13. ADMIN VIEW
 --------------------------------------------------------- */
+el("adminHint").textContent = ADMIN_PASSCODE;
 el("adminLoginBtn").addEventListener("click", tryAdminLogin);
 el("adminPass").addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); });
 
