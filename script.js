@@ -19,8 +19,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 --------------------------------------------------------- */
 const MAX_QTY_PER_ITEM = 100;   // max cups per menu item, per order (all sizes/variants combined)
 
-const ADMIN_PASSCODE = "sugarcrush2026"; // demo only — replace with real auth for production
-
 // Pickup time the customer can type in (24-hour "HH:MM")
 const PICKUP_OPEN = "08:00";    // 8:00 AM
 const PICKUP_CLOSE = "16:00";   // 4:00 PM
@@ -102,10 +100,21 @@ const MENU = [
 /* ---------------------------------------------------------
    3. STATE
 --------------------------------------------------------- */
+const MY_ORDERS_KEY = "sugarcrush_my_orders";
+function loadMyIds() {
+  try {
+    const v = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(-50) : [];
+  } catch (e) { return []; }
+}
+function saveMyIds() {
+  try { localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(state.myTicketIds.slice(-50))); } catch (e) { /* private mode: ignore */ }
+}
+
 const state = {
   cart: {},               // { lineKey: { itemId, optKey, sugar, addons:[ids], qty } }
   orders: [],             // orders currently loaded from Supabase
-  myTicketIds: [],        // tickets placed this session, shown automatically in tracker
+  myTicketIds: loadMyIds(), // order ids placed on this device, shown automatically in Orders
   nextTicketNumber: 1,    // shown on the hero banner; refreshed from the DB
   activeCategory: "All",
   adminAuthed: false,
@@ -165,7 +174,7 @@ function mapRow(row) {
   };
 }
 
-// Load every order (used for the admin dashboard's full queue)
+// STAFF ONLY: load every order. The database only returns rows to a signed-in staff account.
 async function fetchAllOrders() {
   const { data, error } = await supabaseClient
     .from("orders")
@@ -181,85 +190,78 @@ async function fetchAllOrders() {
 
 // Refresh the "next queue number" shown on the hero banner
 async function refreshHeroTicket() {
-  const { data, error } = await supabaseClient
-    .from("orders")
-    .select("ticket_number")
-    .order("ticket_number", { ascending: false })
-    .limit(1);
-
-  const nextNum = !error && data && data.length ? data[0].ticket_number + 1 : 1;
+  const { data, error } = await supabaseClient.rpc("next_ticket_number");
+  const nextNum = !error && data ? Number(data) : 1;
   state.nextTicketNumber = nextNum;
   const ticketEl = el("heroTicketNum");
   if (ticketEl) ticketEl.textContent = formatTicket(nextNum);
 }
 
-// Insert a new order; returns the saved row (with DB-assigned ticket_number) or null on failure
-async function insertOrder(payload) {
-  const { data, error } = await supabaseClient
-    .from("orders")
-    .insert([payload])
-    .select()
-    .single();
+// Place an order through the server function (it validates and recomputes the total).
+// Returns the saved order (with its DB-assigned ticket number) or null on failure.
+async function placeOrder(o) {
+  const { data, error } = await supabaseClient.rpc("place_order", {
+    p_name: o.name,
+    p_section: o.section,
+    p_pickup: o.pickup,
+    p_payment: o.payment,
+    p_gcash: o.gcash,
+    p_items: o.items,
+  });
 
   if (error) {
-    console.error("Insert order failed:", error);
+    console.error("Place order failed:", error);
     alert("❌ Order not saved.\n\nReason: " + error.message);
     return null;
   }
-  return mapRow(data);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? mapRow(row) : null;
 }
 
-async function updateOrderStatus(id, status) {
-  const { error } = await supabaseClient.from("orders").update({ status }).eq("id", id);
-  if (error) {
-    console.error("Update status failed:", error);
-    alert("❌ Could not update status: " + error.message);
+// STAFF ONLY: change an order. RLS silently ignores updates from non-staff, so we check a row came back.
+async function updateOrder(id, patch, what) {
+  const { data, error } = await supabaseClient.from("orders").update(patch).eq("id", id).select("id");
+  if (error || !data || data.length === 0) {
+    console.error(`Update ${what} failed:`, error);
+    alert(`❌ Could not update ${what}: ` + (error ? error.message : "not allowed. Please sign in again."));
     return false;
   }
   return true;
 }
+const updateOrderStatus = (id, status) => updateOrder(id, { status }, "status");
+const updateOrderPaid = (id, paid) => updateOrder(id, { paid }, "payment");
 
-async function updateOrderPaid(id, paid) {
-  const { error } = await supabaseClient.from("orders").update({ paid }).eq("id", id);
-  if (error) {
-    console.error("Update paid failed:", error);
-    alert("❌ Could not update payment: " + error.message);
-    return false;
-  }
-  return true;
+// Customer: orders placed on this device
+async function fetchMyOrders(ids) {
+  const { data, error } = await supabaseClient.rpc("get_orders_by_ids", { p_ids: ids });
+  if (error) { console.error("Fetch my orders failed:", error); return []; }
+  return (data || []).map(mapRow);
 }
 
-// Search orders by ticket number or customer name (used in the tracker)
-async function searchOrders(query) {
-  const digits = query.replace(/[^0-9]/g, "");
-  const safe = query.replace(/[,()%]/g, " "); // keep the PostgREST filter string well-formed
-  const orFilter = digits
-    ? `ticket_number.eq.${Number(digits)},student_name.ilike.%${safe}%`
-    : `student_name.ilike.%${safe}%`;
-
-  const { data, error } = await supabaseClient
-    .from("orders")
-    .select("*")
-    .or(orFilter)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  if (error) {
-    console.error("Search failed:", error);
-    return [];
-  }
-  return data.map(mapRow);
+// Customer: look up one order by ticket number AND the name used on it
+async function findOrders(ticketText, name) {
+  const digits = String(ticketText).replace(/[^0-9]/g, "");
+  if (!digits || !name) return [];
+  const { data, error } = await supabaseClient.rpc("find_order", { p_ticket: Number(digits), p_name: name });
+  if (error) { console.error("Find order failed:", error); return []; }
+  return (data || []).map(mapRow);
 }
 
-// Live updates: whenever any order changes, refresh whichever view is open
+// Live updates for staff (the database only sends these to signed-in staff)
 supabaseClient
   .channel("orders-changes")
   .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
     refreshHeroTicket();
-    if (!views.admin.hidden) renderAdmin();
-    if (!views.tracker.hidden) renderTracker();
+    if (state.adminAuthed && !views.admin.hidden) renderAdmin();
   })
   .subscribe();
+
+// Customers don't get live pushes, so quietly refresh every 15 seconds
+setInterval(() => {
+  if (document.hidden) return;
+  if (!views.student.hidden) refreshHeroTicket();
+  if (!views.tracker.hidden && !el("trackerTicketInput").value && !el("trackerNameInput").value) renderTracker(true);
+}, 15000);
 
 /* ---------------------------------------------------------
    6. VIEW SWITCHING
@@ -672,30 +674,28 @@ checkoutForm.addEventListener("submit", async (e) => {
   const pickupTime = formatTime12(pickupRaw);
   const lines = cartLines();
 
-  const payload = {
-    student_name: customerName,
-    student_section: customerSection,
-    pickup_time: pickupTime,
-    payment_method: payment,
-    gcash_ref: payment === "gcash" ? gcashRef : null,
-    paid: false, // cash: unpaid until pickup, gcash: pending verification
+  const orderArgs = {
+    name: customerName,
+    section: customerSection,
+    pickup: pickupTime,
+    payment,
+    gcash: payment === "gcash" ? gcashRef : null,
     items: lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price })),
-    total: cartTotal(),
-    status: "Pending",
   };
 
   const submitBtn = checkoutForm.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.textContent = "Placing order…";
 
-  const savedOrder = await insertOrder(payload);
+  const savedOrder = await placeOrder(orderArgs);
 
   submitBtn.disabled = false;
   submitBtn.textContent = "Place Order";
 
-  if (!savedOrder) return; // insertOrder already alerted the specific error
+  if (!savedOrder) return; // placeOrder already alerted the specific error
 
   state.myTicketIds.push(savedOrder.id);
+  saveMyIds();
   state.cart = {};
 
   renderMenu();
@@ -742,37 +742,38 @@ function closeAllModals() {
 /* ---------------------------------------------------------
    12. TRACKER VIEW (customer side)
 --------------------------------------------------------- */
-async function renderTracker() {
+async function renderTracker(silent) {
   const list = el("trackerList");
-  list.innerHTML = `<p class="trackerEmpty">Loading…</p>`;
+  if (!silent) list.innerHTML = `<p class="trackerEmpty">Loading…</p>`;
 
   let mine = [];
-  if (state.myTicketIds.length) {
-    const all = await fetchAllOrders();
-    mine = all.filter((o) => state.myTicketIds.includes(o.id));
-  }
+  if (state.myTicketIds.length) mine = await fetchMyOrders(state.myTicketIds);
 
   list.innerHTML = "";
   if (mine.length === 0) {
-    list.innerHTML = `<p class="trackerEmpty">No orders yet this visit. Place an order, or search above for a past ticket.</p>`;
+    list.innerHTML = `<p class="trackerEmpty">No orders on this device yet. Place an order, or look one up above with its ticket number and name.</p>`;
     return;
   }
   mine.forEach((o) => list.appendChild(buildOrderCard(o, false)));
 }
 
 el("trackerSearchBtn").addEventListener("click", runTrackerSearch);
-el("trackerSearchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") runTrackerSearch(); });
+["trackerTicketInput", "trackerNameInput"].forEach((id) =>
+  el(id).addEventListener("keydown", (e) => { if (e.key === "Enter") runTrackerSearch(); })
+);
 
 async function runTrackerSearch() {
-  const q = el("trackerSearchInput").value.trim();
+  const ticket = el("trackerTicketInput").value.trim();
+  const name = el("trackerNameInput").value.trim();
   const list = el("trackerList");
-  if (!q) { renderTracker(); return; }
+  if (!ticket && !name) { renderTracker(); return; }
+  if (!ticket || !name) { toast("Enter both your ticket number and the name used on the order."); return; }
 
   list.innerHTML = `<p class="trackerEmpty">Searching…</p>`;
-  const results = await searchOrders(q);
+  const results = await findOrders(ticket, name);
   list.innerHTML = "";
   if (results.length === 0) {
-    list.innerHTML = `<p class="trackerEmpty">No matching orders found.</p>`;
+    list.innerHTML = `<p class="trackerEmpty">No matching order found. Check the ticket number and the exact name you used.</p>`;
     return;
   }
   results.forEach((o) => list.appendChild(buildOrderCard(o, false)));
@@ -842,22 +843,65 @@ function buildOrderCard(o, isAdmin) {
 /* ---------------------------------------------------------
    13. ADMIN VIEW
 --------------------------------------------------------- */
-el("adminHint").textContent = ADMIN_PASSCODE;
-el("adminLoginBtn").addEventListener("click", tryAdminLogin);
-el("adminPass").addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); });
-
-function tryAdminLogin() {
-  const val = el("adminPass").value;
-  if (val === ADMIN_PASSCODE) {
-    state.adminAuthed = true;
-    el("adminError").hidden = true;
-    el("adminPass").value = "";
-    renderAdmin();
-  } else {
-    el("adminError").hidden = false;
-  }
+// Is the signed-in account on the staff list? (checked by the database, not the browser)
+async function checkStaff() {
+  const { data, error } = await supabaseClient.rpc("is_staff");
+  return !error && data === true;
 }
-el("adminLogoutBtn").addEventListener("click", () => { state.adminAuthed = false; renderAdmin(); });
+
+el("adminLoginBtn").addEventListener("click", tryAdminLogin);
+["adminEmail", "adminPass"].forEach((id) =>
+  el(id).addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); })
+);
+
+async function tryAdminLogin() {
+  const email = el("adminEmail").value.trim();
+  const password = el("adminPass").value;
+  const err = el("adminError");
+  if (!email || !password) { err.textContent = "Enter your staff email and password."; err.hidden = false; return; }
+
+  const btn = el("adminLoginBtn");
+  btn.disabled = true;
+  btn.textContent = "Signing in…";
+
+  let ok = false;
+  let msg = "Incorrect email or password.";
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (!error) {
+    ok = await checkStaff();
+    if (!ok) { msg = "This account is not on the staff list."; await supabaseClient.auth.signOut(); }
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Sign In";
+  if (!ok) { err.textContent = msg; err.hidden = false; return; }
+
+  state.adminAuthed = true;
+  err.hidden = true;
+  el("adminPass").value = "";
+  renderAdmin();
+}
+
+el("adminLogoutBtn").addEventListener("click", async () => {
+  await supabaseClient.auth.signOut();
+  state.adminAuthed = false;
+  renderAdmin();
+});
+
+// Keep staff signed in across page reloads; sign out cleanly if the session ends
+supabaseClient.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") {
+    setTimeout(() => { state.adminAuthed = false; if (!views.admin.hidden) renderAdmin(); }, 0);
+  }
+});
+(async () => {
+  const { data } = await supabaseClient.auth.getSession();
+  if (data && data.session && (await checkStaff())) {
+    state.adminAuthed = true;
+    if (!views.admin.hidden) renderAdmin();
+  }
+})();
+
 el("adminSearch").addEventListener("input", renderAdminOrderList);
 
 async function renderAdmin() {
