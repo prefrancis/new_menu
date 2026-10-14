@@ -10,8 +10,8 @@
    - Project URL  -> looks like https://xxxxx.supabase.co
    - anon public key -> long string starting with "eyJ..."
 --------------------------------------------------------- */
-const SUPABASE_URL = "https://devdmcimuyqkwdzypomb.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRldmRtY2ltdXlxa3dkenlwb21iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0Mjg1OTcsImV4cCI6MjEwMDAwNDU5N30.qYUvpKApDliUw11wcmB5c2VzvrRNtrlV5kwRXlDl1H4";
+const SUPABASE_URL = "https://rlgvlbhikzlgsyhhcghw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3ZsYmhpa3psZ3N5aGhjZ2h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzM3NzIsImV4cCI6MjEwNzU0OTc3Mn0._YjnWtcByF31UGFd5JFI8-Ew0V8KjCaFhwpnLeAts0k";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ---------------------------------------------------------
