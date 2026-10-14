@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Sugar Crush Milk Tea — Pre-Order</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="topbar__brand">
+    <img class="topbar__logo" src="logo.png" alt="Sugar Crush Milk Tea logo">
+    <div class="topbar__name">
+      <strong>Sugar Crush</strong>
+      <small>Milk Tea</small>
+    </div>
+  </div>
+
+  <nav class="topbar__nav">
+    <button class="navbtn is-active" data-view="student" id="navStudent">Order Drinks</button>
+    <button class="navbtn" data-view="tracker" id="navTracker">My Orders</button>
+    <button class="navbtn navbtn--staff" data-view="admin" id="navAdmin">Staff Panel</button>
+  </nav>
+
+  <button class="cartFab" id="cartFab" aria-label="Open cart">
+    🧋 <span class="cartFab__count" id="cartCount">0</span>
+  </button>
+</header>
+
+<!-- ============ ORDER VIEW ============ -->
+<main class="view" id="view-student">
+
+  <section class="hero">
+    <div class="hero__ticket">
+      <div class="hero__stub">
+        <span class="hero__eyebrow">TAKE A NUMBER, SKIP THE LINE</span>
+        <h1>Order ahead.<br><span class="pop">Sip sooner!</span></h1>
+        <p>Pick your drink, size and sweetness, then reserve it for pickup — pay with cash at the counter or GCash, and grab your cup the moment it's ready.</p>
+      </div>
+      <div class="hero__perf" aria-hidden="true"></div>
+      <div class="hero__ticketnum">
+        <small>NEXT QUEUE NUMBER</small>
+        <strong id="heroTicketNum">SC-0001</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="catbar" id="catbar" aria-label="Menu categories"></section>
+
+  <section class="menu" id="menuGrid"></section>
+</main>
+
+<!-- ============ ORDER TRACKER VIEW ============ -->
+<main class="view" id="view-tracker" hidden>
+  <div class="panelHead">
+    <h2>My Orders</h2>
+    <p>Orders placed this visit show automatically. Reopening the site later? Search by name or ticket number.</p>
+  </div>
+
+  <div class="trackerSearch">
+    <input type="text" id="trackerSearchInput" placeholder="Search by ticket # (e.g. SC-0007) or your name…">
+    <button class="btn btn--primary" id="trackerSearchBtn">Search</button>
+  </div>
+
+  <div class="trackerList" id="trackerList"></div>
+</main>
+
+<!-- ============ ADMIN VIEW ============ -->
+<main class="view" id="view-admin" hidden>
+
+  <div class="adminLogin" id="adminLogin">
+    <div class="adminLogin__card">
+      <span class="adminLogin__icon">🔒</span>
+      <h2>Staff Sign-In</h2>
+      <p>Sugar Crush staff only. Enter the staff passcode to view and manage today's orders.</p>
+      <input type="password" id="adminPass" placeholder="Staff Passcode">
+      <button class="btn btn--primary" id="adminLoginBtn">Sign In</button>
+      <p class="adminLogin__error" id="adminError" hidden>Incorrect passcode. Try again.</p>
+    </div>
+  </div>
+
+  <div class="adminDash" id="adminDash" hidden>
+    <div class="panelHead panelHead--row">
+      <div>
+        <h2>Order Queue</h2>
+        <p id="adminDate"></p>
+      </div>
+      <button class="btn btn--ghost" id="adminLogoutBtn">Sign Out</button>
+    </div>
+
+    <div class="statRow" id="statRow"></div>
+
+    <div class="adminControls">
+      <div class="statusTabs" id="statusTabs"></div>
+      <input type="search" id="adminSearch" placeholder="Search ticket # or name…">
+    </div>
+
+    <div class="orderList" id="orderList"></div>
+  </div>
+</main>
+
+<!-- ============ CART DRAWER ============ -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="cartDrawer" aria-label="Your cart">
+  <div class="drawer__head">
+    <h2>Your Order</h2>
+    <button class="drawer__close" id="closeCart" aria-label="Close cart">✕</button>
+  </div>
+
+  <div class="drawer__body" id="cartBody">
+    <div class="cartItems" id="cartItems"></div>
+    <p class="cartEmpty" id="cartEmpty">Your tray is empty. Add a yummy drink from the menu! 🧋</p>
+  </div>
+
+  <div class="drawer__foot" id="cartFoot">
+    <div class="totalRow">
+      <span>Total</span>
+      <strong id="cartTotal">₱0.00</strong>
+    </div>
+    <button class="btn btn--primary btn--block" id="checkoutBtn" disabled>Proceed to Checkout</button>
+  </div>
+</aside>
+
+<!-- ============ CUSTOMIZE DRINK MODAL ============ -->
+<div class="modalOverlay" id="customOverlay">
+  <div class="modal" id="customModal">
+    <div class="modal__head">
+      <h2>Customize Drink</h2>
+      <button class="drawer__close" id="closeCustom" aria-label="Close">✕</button>
+    </div>
+    <div class="modal__body" id="customBody"></div>
+  </div>
+</div>
+
+<!-- ============ CHECKOUT MODAL ============ -->
+<div class="modalOverlay" id="checkoutOverlay">
+  <div class="modal" id="checkoutModal">
+    <div class="modal__head">
+      <h2>Checkout</h2>
+      <button class="drawer__close" id="closeCheckout" aria-label="Close">✕</button>
+    </div>
+
+    <form id="checkoutForm" class="modal__body">
+      <label class="field">
+        <span>Your name</span>
+        <input type="text" id="studentName" required placeholder="Juan Dela Cruz">
+      </label>
+
+      <label class="field">
+        <span>Mobile number</span>
+        <input type="tel" id="studentSection" required inputmode="tel" placeholder="e.g. 09123456789">
+      </label>
+
+      <label class="field">
+        <span>Pickup time</span>
+        <select id="pickupTime" required>
+          <option value="">Select a pickup time…</option>
+        </select>
+      </label>
+
+      <fieldset class="field">
+        <legend>Payment method</legend>
+        <div class="payOptions">
+          <label class="payOpt">
+            <input type="radio" name="payment" value="cash" checked>
+            <span class="payOpt__icon">💵</span>
+            <span class="payOpt__text">
+              <strong>Cash on Pickup</strong>
+              <small>Pay at the counter</small>
+            </span>
+          </label>
+          <label class="payOpt">
+            <input type="radio" name="payment" value="gcash">
+            <span class="payOpt__icon">📱</span>
+            <span class="payOpt__text">
+              <strong>GCash</strong>
+              <small>Pay online before pickup</small>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="gcashBox" id="gcashBox" hidden>
+        <p>Send the exact amount to:</p>
+        <div class="gcashNum">0932 267 7600 <span>(Sugar Crush Milk Tea)</span></div>
+        <label class="field">
+          <span>Your GCash Number</span>
+          <input type="text" id="gcashRef" placeholder="e.g. 09123456789">
+        </label>
+        <p class="gcashNote">Your order will be marked <strong>Payment Pending</strong> until staff verifies your number.</p>
+      </div>
+
+      <div class="modal__summary" id="modalSummary"></div>
+
+      <button type="submit" class="btn btn--primary btn--block">Place Order</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ CONFIRMATION MODAL ============ -->
+<div class="modalOverlay" id="confirmOverlay">
+  <div class="modal modal--ticket" id="confirmModal">
+    <div class="ticketCard">
+      <div class="ticketCard__top">
+        <small>YOUR QUEUE NUMBER</small>
+        <h1 id="confirmNumber">SC-0001</h1>
+      </div>
+      <div class="hero__perf" aria-hidden="true"></div>
+      <div class="ticketCard__bottom" id="confirmDetails"></div>
+      <button class="btn btn--primary btn--block" id="confirmDoneBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>
