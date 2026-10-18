@@ -47,10 +47,8 @@ try {
 /* ---------------------------------------------------------
    1. SHOP SETTINGS — EDIT HERE
 --------------------------------------------------------- */
-// Staff sign-in is password-only. This is the password shown as the hint on the Staff Panel.
-// It must match the password of the staff account you create in Supabase (see the setup steps).
-// NOTE: everything in this file is public once it's on GitHub, so anyone can read this password.
-const STAFF_PASSWORD_HINT = "Staff123";
+// Staff sign-in is password-only. The password is NOT stored in this file: it is the password of the
+// staff account in Supabase (Authentication > Users > staff@example.com). Change it there any time.
 
 const MAX_QTY_PER_ITEM = 100;   // max cups per menu item, per order (all sizes/variants combined)
 
@@ -892,12 +890,6 @@ async function checkStaff() {
 
 el("adminLoginBtn").addEventListener("click", tryAdminLogin);
 el("adminPass").addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); });
-if (STAFF_PASSWORD_HINT) {
-  const hint = el("adminHint");
-  const code = document.createElement("code");
-  code.textContent = STAFF_PASSWORD_HINT;
-  hint.append("Password: ", code);
-}
 
 async function tryAdminLogin() {
   const password = el("adminPass").value;
