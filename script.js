@@ -47,6 +47,13 @@ try {
 /* ---------------------------------------------------------
    1. SHOP SETTINGS — EDIT HERE
 --------------------------------------------------------- */
+// Staff sign-in is password-only. The email below is the staff account you created in
+// Supabase > Authentication > Users (it must also be listed in schema.sql's staff table).
+const STAFF_EMAIL = "your-staff-email@example.com";   // <<< CHANGE THIS
+// Small line shown under the staff password box. Don't put the real password here:
+// everything in this file is public once it's on GitHub.
+const STAFF_PASSWORD_HINT = "Ask the shop owner for the staff password.";
+
 const MAX_QTY_PER_ITEM = 100;   // max cups per menu item, per order (all sizes/variants combined)
 
 // Pickup time the customer can type in (24-hour "HH:MM")
@@ -886,23 +893,22 @@ async function checkStaff() {
 }
 
 el("adminLoginBtn").addEventListener("click", tryAdminLogin);
-["adminEmail", "adminPass"].forEach((id) =>
-  el(id).addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); })
-);
+el("adminPass").addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); });
+if (STAFF_PASSWORD_HINT) el("adminHint").textContent = "Hint: " + STAFF_PASSWORD_HINT;
 
 async function tryAdminLogin() {
-  const email = el("adminEmail").value.trim();
   const password = el("adminPass").value;
   const err = el("adminError");
-  if (!email || !password) { err.textContent = "Enter your staff email and password."; err.hidden = false; return; }
+  if (!password) { err.textContent = "Enter the staff password."; err.hidden = false; return; }
+  if (STAFF_EMAIL.startsWith("your-staff-email")) { err.textContent = "Setup needed: set STAFF_EMAIL at the top of script.js."; err.hidden = false; return; }
 
   const btn = el("adminLoginBtn");
   btn.disabled = true;
   btn.textContent = "Signing in…";
 
   let ok = false;
-  let msg = "Incorrect email or password.";
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  let msg = "Incorrect password.";
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: STAFF_EMAIL, password });
   if (!error) {
     ok = await checkStaff();
     if (!ok) { msg = "This account is not on the staff list."; await supabaseClient.auth.signOut(); }
