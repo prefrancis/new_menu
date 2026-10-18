@@ -134,6 +134,17 @@ input,select{ font-family:var(--font-body); }
 }
 @media(max-width:819px){
   body{ padding-bottom:70px; }
+
+  /* On phones the menu becomes a bar fixed to the bottom of the screen */
+  .topbar__nav{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:35; gap:6px;
+    background:var(--white); border-top:3px solid var(--pink);
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    box-shadow:0 -6px 16px rgba(106,27,138,.15);
+  }
+  .topbar__nav .navbtn{ flex:1; padding:10px 6px; font-size:13px; color:var(--purple); border-color:var(--line); }
+  .topbar__nav .navbtn.is-active{ background:var(--gold); border-color:var(--gold-dark); color:var(--outline); }
+  .toast{ bottom:96px; }
 }
 
 /* =========================================================
