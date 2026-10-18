@@ -47,12 +47,10 @@ try {
 /* ---------------------------------------------------------
    1. SHOP SETTINGS — EDIT HERE
 --------------------------------------------------------- */
-// Staff sign-in is password-only. The email below is the staff account you created in
-// Supabase > Authentication > Users (it must also be listed in schema.sql's staff table).
-const STAFF_EMAIL = "your-staff-email@example.com";   // <<< CHANGE THIS
-// Small line shown under the staff password box. Don't put the real password here:
-// everything in this file is public once it's on GitHub.
-const STAFF_PASSWORD_HINT = "Ask the shop owner for the staff password.";
+// Staff sign-in is password-only. This is the password shown as the hint on the Staff Panel.
+// It must match the password of the staff account you create in Supabase (see the setup steps).
+// NOTE: everything in this file is public once it's on GitHub, so anyone can read this password.
+const STAFF_PASSWORD_HINT = "Staff123";
 
 const MAX_QTY_PER_ITEM = 100;   // max cups per menu item, per order (all sizes/variants combined)
 
@@ -894,13 +892,17 @@ async function checkStaff() {
 
 el("adminLoginBtn").addEventListener("click", tryAdminLogin);
 el("adminPass").addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdminLogin(); });
-if (STAFF_PASSWORD_HINT) el("adminHint").textContent = "Hint: " + STAFF_PASSWORD_HINT;
+if (STAFF_PASSWORD_HINT) {
+  const hint = el("adminHint");
+  const code = document.createElement("code");
+  code.textContent = STAFF_PASSWORD_HINT;
+  hint.append("Password: ", code);
+}
 
 async function tryAdminLogin() {
   const password = el("adminPass").value;
   const err = el("adminError");
   if (!password) { err.textContent = "Enter the staff password."; err.hidden = false; return; }
-  if (STAFF_EMAIL.startsWith("your-staff-email")) { err.textContent = "Setup needed: set STAFF_EMAIL at the top of script.js."; err.hidden = false; return; }
 
   const btn = el("adminLoginBtn");
   btn.disabled = true;
@@ -908,7 +910,7 @@ async function tryAdminLogin() {
 
   let ok = false;
   let msg = "Incorrect password.";
-  const { error } = await supabaseClient.auth.signInWithPassword({ email: STAFF_EMAIL, password });
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: "staff@example.com", password }) // fixed internal staff login;
   if (!error) {
     ok = await checkStaff();
     if (!ok) { msg = "This account is not on the staff list."; await supabaseClient.auth.signOut(); }
