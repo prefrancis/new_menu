@@ -12,7 +12,37 @@
 --------------------------------------------------------- */
 const SUPABASE_URL = "https://rlgvlbhikzlgsyhhcghw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3ZsYmhpa3psZ3N5aGhjZ2h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzM3NzIsImV4cCI6MjEwNzU0OTc3Mn0._YjnWtcByF31UGFd5JFI8-Ew0V8KjCaFhwpnLeAts0k";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// A red notice at the top of the page (works even if styles.css is out of date)
+function showBanner(msg) {
+  const b = document.createElement("div");
+  b.setAttribute("role", "alert");
+  b.style.cssText = "position:sticky;top:0;z-index:999;background:#B01F78;color:#fff;font:700 13.5px/1.4 Nunito,sans-serif;padding:10px 16px;text-align:center";
+  b.textContent = msg;
+  document.body.prepend(b);
+}
+
+// If the Supabase library can't load (ad blocker, school/office filter, bad connection),
+// keep the menu working and tell the customer, instead of the whole page going blank.
+function offlineClient() {
+  const err = { message: "Can't reach the ordering server. Check your internet connection or turn off your ad blocker, then refresh." };
+  const fail = async () => ({ data: null, error: err });
+  const chain = { select() { return chain; }, order() { return chain; }, update() { return chain; }, eq() { return chain; }, then: (res) => Promise.resolve({ data: null, error: err }).then(res) };
+  const ch = { on() { return ch; }, subscribe() { return ch; } };
+  return {
+    rpc: fail, from: () => chain, channel: () => ch,
+    auth: { signInWithPassword: fail, signOut: async () => ({ error: null }), getSession: async () => ({ data: { session: null } }), onAuthStateChange() {} },
+  };
+}
+
+let supabaseClient;
+try {
+  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  console.error("Supabase failed to load:", e);
+  supabaseClient = offlineClient();
+  showBanner("⚠️ Can't reach the ordering server. You can browse the menu, but orders can't be placed. Check your connection or turn off your ad blocker, then refresh.");
+}
 
 /* ---------------------------------------------------------
    1. SHOP SETTINGS — EDIT HERE
@@ -129,7 +159,13 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 /* ---------------------------------------------------------
    4. ELEMENT REFS
 --------------------------------------------------------- */
-const el = (id) => document.getElementById(id);
+const missingEls = [];
+const el = (id) => {
+  const found = document.getElementById(id);
+  if (found) return found;
+  missingEls.push(id);
+  return document.createElement("div"); // harmless stand-in so the rest of the page keeps working
+};
 
 const catbar = el("catbar");
 const menuGrid = el("menuGrid");
@@ -972,3 +1008,8 @@ renderMenu();
 renderCart();
 refreshHeroTicket();
 showView("student");
+
+if (missingEls.length) {
+  console.error("index.html is missing elements script.js expects:", [...new Set(missingEls)]);
+  showBanner("⚠️ The site files don't match (index.html is out of date). Re-upload index.html, script.js, styles.css and refresh.");
+}
