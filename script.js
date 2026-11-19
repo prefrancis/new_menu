@@ -158,6 +158,7 @@ const state = {
   adminAuthed: false,
   adminStatusFilter: "All",
   unavailableItems: new Set(Array.isArray(savedMenuSettings.unavailable) ? savedMenuSettings.unavailable : []),
+  menuLoaded: false,
   custom: null,           // drink currently being customized
 };
 
@@ -474,7 +475,7 @@ function setLineQty(key, wanted) {
   if (next <= 0) delete state.cart[key];
   else l.qty = next;
   renderMenu();
-  renderCart();
+renderCart();
 }
 
 function renderCart() {
@@ -646,7 +647,7 @@ function renderCustomize() {
     if (!added) return;
     closeCustomize();
     renderMenu();
-    renderCart();
+renderCart();
     if (added === c.qty) toast(`${added} × ${item.name} added to your tray 🧋`);
   });
 }
@@ -751,7 +752,7 @@ checkoutForm.addEventListener("submit", async (e) => {
   state.cart = {};
 
   renderMenu();
-  renderCart();
+renderCart();
   await refreshHeroTicket();
   closeCheckout();
   checkoutForm.reset();
@@ -955,8 +956,33 @@ el("adminSearch").addEventListener("input", renderAdminOrderList);
 
 function persistMenuSettings() {
   const items = Object.fromEntries(MENU.map((item) => [item.id, { category: item.category, name: item.name, emoji: item.emoji, desc: item.desc, options: item.options }]));
-  try { localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify({ items, unavailable: [...state.unavailableItems] })); }
-  catch (e) { toast("Could not save menu changes in this browser."); }
+  try { localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify({ items, unavailable: [...state.unavailableItems] })); } catch (e) {}
+}
+function applySharedMenuRows(rows) {
+  rows.forEach((row) => {
+    const item = findItem(row.id); if (!item) return;
+    Object.assign(item, { category: row.category, name: row.name, emoji: row.emoji, desc: row.description, options: row.options });
+    if (row.available) state.unavailableItems.delete(row.id); else state.unavailableItems.add(row.id);
+  });
+  state.menuLoaded = true; persistMenuSettings(); renderCatbar(); renderMenu();
+  if (state.adminAuthed) renderMenuEditor();
+}
+async function loadSharedMenu(seedIfEmpty = false) {
+  const { data, error } = await supabaseClient.from("menu_items").select("id,category,name,emoji,description,options,available");
+  if (error) { console.error("Could not load shared menu:", error.message); return false; }
+  if (!data.length && seedIfEmpty) {
+    const initial = MENU.map((item) => ({ id: item.id, category: item.category, name: item.name, emoji: item.emoji, description: item.desc, options: item.options, available: true }));
+    const seeded = await supabaseClient.from("menu_items").upsert(initial);
+    if (seeded.error) { console.error("Could not initialize shared menu:", seeded.error.message); return false; }
+    applySharedMenuRows(initial);
+  } else if (data.length) applySharedMenuRows(data);
+
+  return true;
+}
+function subscribeSharedMenu() {
+  supabaseClient.channel("shared-menu-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, async () => { await loadSharedMenu(false); })
+    .subscribe();
 }
 function renderMenuEditor() {
   const select = el("menuEditSelect"), form = el("menuEditForm"), selectedId = select.value || MENU[0]?.id;
@@ -973,17 +999,23 @@ function renderMenuEditor() {
     <button class="btn btn--primary" type="submit">Save item</button>`;
 }
 el("menuEditSelect").addEventListener("change", renderMenuEditor);
-el("menuEditForm").addEventListener("submit", (event) => {
+el("menuEditForm").addEventListener("submit", async (event) => {
   event.preventDefault(); const item = findItem(el("menuEditSelect").value);
   if (!item || !state.adminAuthed) return;
   const data = new FormData(event.currentTarget);
-  item.name = String(data.get("name")).trim(); item.category = String(data.get("category")).trim();
-  item.emoji = String(data.get("emoji")).trim(); item.desc = String(data.get("desc")).trim();
-  item.options = item.options.map((option, i) => ({ ...option, price: Number(data.get(`price-${i}`)) }));
-  if (data.get("available")) state.unavailableItems.delete(item.id); else state.unavailableItems.add(item.id);
-  persistMenuSettings(); renderMenuEditor(); renderCatbar(); renderMenu(); toast(`${item.name} saved.`);
+  const updated = {
+    id: item.id, name: String(data.get("name")).trim(), category: String(data.get("category")).trim(),
+    emoji: String(data.get("emoji")).trim(), description: String(data.get("desc")).trim(),
+    options: item.options.map((option, i) => ({ ...option, price: Number(data.get(`price-${i}`)) })),
+    available: Boolean(data.get("available")),
+  };
+  const saveButton = event.currentTarget.querySelector('button[type="submit"]');
+  saveButton.disabled = true; saveButton.textContent = "Saving…";
+  const { error } = await supabaseClient.from("menu_items").upsert(updated);
+  saveButton.disabled = false; saveButton.textContent = "Save item";
+  if (error) { toast("Could not save shared menu. Check the database setup and try again."); console.error("Could not save menu item:", error.message); return; }
+  applySharedMenuRows([updated]); toast(`${updated.name} saved for all devices.`);
 });
-
 async function renderAdmin() {
   el("adminLogin").hidden = state.adminAuthed;
   el("adminDash").hidden = !state.adminAuthed;
@@ -991,6 +1023,7 @@ async function renderAdmin() {
 
   el("adminDate").textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
+  if (!state.menuLoaded) await loadSharedMenu(true);
   renderMenuEditor();
   el("orderList").innerHTML = `<p class="trackerEmpty">Loading orders…</p>`;
   state.orders = await fetchAllOrders();
@@ -1050,6 +1083,8 @@ function renderAdminOrderList() {
 --------------------------------------------------------- */
 renderCatbar();
 renderMenu();
+loadSharedMenu(false);
+subscribeSharedMenu();
 renderCart();
 refreshHeroTicket();
 showView("student");
