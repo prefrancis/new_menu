@@ -472,3 +472,7 @@ fieldset legend{ padding:0; margin-bottom:6px; }
 .menuEditForm{display:flex;flex-direction:column;gap:12px}.menuEditGrid{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:600px){.menuEditGrid{grid-template-columns:1fr 1fr}}
 .menuEditor .field input,.menuEditor .field select{width:100%}.availabilityToggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}.availabilityToggle input{accent-color:var(--pink);width:18px;height:18px}
 .unavailableBadge{position:absolute;top:10px;right:10px;background:#FDE4F3;color:var(--pink-dark);font-weight:800;font-size:11px;padding:4px 9px;border-radius:999px}
+.addonAvailability{margin-top:16px;padding-top:14px;border-top:2px solid var(--line)}
+.addonAvailability h4{margin:0;color:var(--purple);font-size:16px}.addonAvailability>p{margin:4px 0 10px;color:var(--ink-soft);font-size:12px}
+.addonAvailability__row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;font-weight:800}
+.addonAvailability__row>span:last-child{display:flex;align-items:center;gap:6px;white-space:nowrap}.addonAvailability__row input{accent-color:var(--pink);width:17px;height:17px}.addonAvailability__row small{color:var(--ink-soft);font-weight:700}
