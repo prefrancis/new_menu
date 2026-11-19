@@ -1,5 +1,5 @@
 /* =========================================================
-   SUGAR CRUSH MILK TEA â€” TOKENS
+   SUGAR CRUSH MILK TEA — TOKENS
    Palette sampled from the logo:
    pink ring/bubblegum  #E8399F   plum outer ring  #6A1B8A
    sky-blue lid/swirl   #22CFF0   candy gold text  #FFC93C
@@ -467,113 +467,8 @@ fieldset legend{ padding:0; margin-bottom:6px; }
 /* Utility */
 [hidden]{ display:none !important; }
 
-
-/* ============================================================
-   Sugar Crush: Menu Availability feature (added) - SC_AVAIL_CSS_START
-   ============================================================ */
-
-.foodCard.sc-soldout{
-  position:relative;
-  opacity:.55;
-  filter:grayscale(1);
-  pointer-events:none;
-}
-.foodCard.sc-soldout .addBtn{
-  background:#E9C9DB;
-  box-shadow:none;
-  color:#8A6B78;
-  cursor:not-allowed;
-}
-.sc-soldoutBadge{
-  position:absolute;
-  top:10px;
-  right:10px;
-  z-index:3;
-  background:var(--pink);
-  color:var(--white);
-  font-family:var(--font-display);
-  font-size:12px;
-  letter-spacing:1px;
-  padding:5px 12px;
-  border-radius:999px;
-  box-shadow:0 3px 0 var(--pink-dark);
-  transform:rotate(-6deg);
-}
-.sc-availPanel{
-  background:var(--white);
-  border:2px solid var(--line);
-  border-radius:var(--radius);
-  padding:16px;
-  margin:10px 0 14px;
-  box-shadow:0 4px 0 var(--line);
-}
-.sc-availPanel h3{
-  font-size:19px;
-  color:var(--purple);
-  margin-bottom:6px;
-}
-.sc-availNote{
-  font-size:11.5px;
-  color:var(--ink-soft);
-  line-height:1.5;
-  margin-bottom:10px;
-}
-.sc-availCat{
-  font-size:12px;
-  color:var(--pink-dark);
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.6px;
-  margin:12px 0 4px;
-}
-.sc-availRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:7px 0;
-  border-bottom:1px dashed var(--line);
-  font-size:13.5px;
-  font-weight:700;
-  color:var(--ink);
-}
-.sc-availRow.is-out{ color:var(--ink-soft); text-decoration:line-through; }
-.sc-availBtn{
-  border:2px solid var(--line);
-  background:var(--white);
-  border-radius:999px;
-  padding:6px 12px;
-  font-size:12px;
-  font-weight:800;
-  color:var(--ink);
-  flex:none;
-}
-.sc-availBtn.is-out{
-  background:var(--pink);
-  color:var(--white);
-  border-color:var(--pink);
-  box-shadow:0 2px 0 var(--pink-dark);
-}
-.sc-availSync{ font-size:11px; margin-top:10px; color:var(--ink-soft); line-height:1.5; }
-.sc-availSync.is-on{ color:var(--ok); font-weight:800; }
-.sc-toast{
-  position:fixed;
-  left:50%;
-  bottom:24px;
-  transform:translateX(-50%) translateY(20px);
-  background:var(--purple-dark);
-  color:var(--white);
-  padding:12px 18px;
-  border-radius:14px;
-  font-size:13px;
-  font-weight:700;
-  z-index:99;
-  opacity:0;
-  transition:opacity .25s ease, transform .25s ease;
-  max-width:90%;
-  text-align:center;
-  pointer-events:none;
-}
-.sc-toast.is-show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-/* SC_AVAIL_CSS_END */
+.menuEditor{background:var(--white);border:2px solid var(--line);border-radius:var(--radius);padding:16px;margin:18px 0;box-shadow:0 4px 0 var(--line)}
+.menuEditor__head{margin-bottom:12px}.menuEditor__head h3{font-size:20px;color:var(--purple)}.menuEditor__head p,.menuEditor__note{font-size:12px;color:var(--ink-soft);margin-top:4px}
+.menuEditForm{display:flex;flex-direction:column;gap:12px}.menuEditGrid{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:600px){.menuEditGrid{grid-template-columns:1fr 1fr}}
+.menuEditor .field input,.menuEditor .field select{width:100%}.availabilityToggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}.availabilityToggle input{accent-color:var(--pink);width:18px;height:18px}
+.unavailableBadge{position:absolute;top:10px;right:10px;background:#FDE4F3;color:var(--pink-dark);font-weight:800;font-size:11px;padding:4px 9px;border-radius:999px}
