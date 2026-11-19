@@ -1,7 +1,7 @@
 /* =========================================================
-   SUGAR CRUSH MILK TEA — Pre-Order System
+   SUGAR CRUSH MILK TEA â€” Pre-Order System
    Backed by Supabase. Same `orders` table as the original
-   system (no schema changes needed) — see notes in section 8.
+   system (no schema changes needed) â€” see notes in section 8.
 ========================================================= */
 
 /* ---------------------------------------------------------
@@ -41,11 +41,11 @@ try {
 } catch (e) {
   console.error("Supabase failed to load:", e);
   supabaseClient = offlineClient();
-  showBanner("⚠️ Can't reach the ordering server. You can browse the menu, but orders can't be placed. Check your connection or turn off your ad blocker, then refresh.");
+  showBanner("âš ï¸ Can't reach the ordering server. You can browse the menu, but orders can't be placed. Check your connection or turn off your ad blocker, then refresh.");
 }
 
 /* ---------------------------------------------------------
-   1. SHOP SETTINGS — EDIT HERE
+   1. SHOP SETTINGS â€” EDIT HERE
 --------------------------------------------------------- */
 // Staff sign-in is password-only. The password is NOT stored in this file: it is the password of the
 // staff account in Supabase (Authentication > Users > staff@example.com). Change it there any time.
@@ -83,51 +83,51 @@ const COFFEE = (p) => [
 const ONE_SIZE = (p, oz = "16oz") => [{ key: "STD", label: oz, short: oz, price: p }];
 
 const CATEGORY_NOTES = {
-  "Coffee": "Iced 16oz or Hot 12oz — same price",
+  "Coffee": "Iced 16oz or Hot 12oz â€” same price",
   "Non Coffee": "16oz",
 };
 
 const MENU = [
   // ---- FRUITTI (M 16oz / L 22oz) ----
-  { id: "f1", category: "Fruitti", name: "Lychee",      emoji: "🍒", desc: "Sweet, floral lychee fruit tea.",          options: ML(39, 49) },
-  { id: "f2", category: "Fruitti", name: "Strawberry",  emoji: "🍓", desc: "Juicy strawberry fruit tea.",              options: ML(39, 49) },
-  { id: "f3", category: "Fruitti", name: "Mango",       emoji: "🥭", desc: "Tropical ripe mango fruit tea.",           options: ML(39, 49) },
-  { id: "f4", category: "Fruitti", name: "Melon",       emoji: "🍈", desc: "Cool, refreshing melon fruit tea.",        options: ML(39, 49) },
-  { id: "f5", category: "Fruitti", name: "Blueberry",   emoji: "🫐", desc: "Fruity, tangy blueberry fruit tea.",       options: ML(39, 49) },
-  { id: "f6", category: "Fruitti", name: "Green Apple", emoji: "🍏", desc: "Crisp and tangy green apple fruit tea.",   options: ML(39, 49) },
+  { id: "f1", category: "Fruitti", name: "Lychee",      emoji: "ðŸ’", desc: "Sweet, floral lychee fruit tea.",          options: ML(39, 49) },
+  { id: "f2", category: "Fruitti", name: "Strawberry",  emoji: "ðŸ“", desc: "Juicy strawberry fruit tea.",              options: ML(39, 49) },
+  { id: "f3", category: "Fruitti", name: "Mango",       emoji: "ðŸ¥­", desc: "Tropical ripe mango fruit tea.",           options: ML(39, 49) },
+  { id: "f4", category: "Fruitti", name: "Melon",       emoji: "ðŸˆ", desc: "Cool, refreshing melon fruit tea.",        options: ML(39, 49) },
+  { id: "f5", category: "Fruitti", name: "Blueberry",   emoji: "ðŸ«", desc: "Fruity, tangy blueberry fruit tea.",       options: ML(39, 49) },
+  { id: "f6", category: "Fruitti", name: "Green Apple", emoji: "ðŸ", desc: "Crisp and tangy green apple fruit tea.",   options: ML(39, 49) },
 
   // ---- MILK TEA (M 16oz / L 22oz) ----
-  { id: "t1", category: "Milk Tea", name: "Wintermelon",       emoji: "🧋", desc: "Classic caramel-sweet wintermelon milk tea.", options: ML(49, 59) },
-  { id: "t2", category: "Milk Tea", name: "Cookies & Cream",   emoji: "🍪", desc: "Creamy milk tea with cookie crumbs.",         options: ML(49, 59) },
-  { id: "t3", category: "Milk Tea", name: "Okinawa",           emoji: "🧋", desc: "Rich brown-sugar Okinawa milk tea.",          options: ML(49, 59) },
-  { id: "t4", category: "Milk Tea", name: "Salted Caramel",    emoji: "🍮", desc: "Sweet-salty caramel milk tea.",               options: ML(49, 59) },
-  { id: "t5", category: "Milk Tea", name: "Taro",              emoji: "🍠", desc: "Smooth, nutty purple taro milk tea.",         options: ML(49, 59) },
-  { id: "t6", category: "Milk Tea", name: "Belgian Chocolate", emoji: "🍫", desc: "Deep chocolatey milk tea.",                   options: ML(49, 59) },
-  { id: "t7", category: "Milk Tea", name: "Matcha",            emoji: "🍵", desc: "Earthy Japanese-style matcha milk tea.",      options: ML(49, 59) },
+  { id: "t1", category: "Milk Tea", name: "Wintermelon",       emoji: "ðŸ§‹", desc: "Classic caramel-sweet wintermelon milk tea.", options: ML(49, 59) },
+  { id: "t2", category: "Milk Tea", name: "Cookies & Cream",   emoji: "ðŸª", desc: "Creamy milk tea with cookie crumbs.",         options: ML(49, 59) },
+  { id: "t3", category: "Milk Tea", name: "Okinawa",           emoji: "ðŸ§‹", desc: "Rich brown-sugar Okinawa milk tea.",          options: ML(49, 59) },
+  { id: "t4", category: "Milk Tea", name: "Salted Caramel",    emoji: "ðŸ®", desc: "Sweet-salty caramel milk tea.",               options: ML(49, 59) },
+  { id: "t5", category: "Milk Tea", name: "Taro",              emoji: "ðŸ ", desc: "Smooth, nutty purple taro milk tea.",         options: ML(49, 59) },
+  { id: "t6", category: "Milk Tea", name: "Belgian Chocolate", emoji: "ðŸ«", desc: "Deep chocolatey milk tea.",                   options: ML(49, 59) },
+  { id: "t7", category: "Milk Tea", name: "Matcha",            emoji: "ðŸµ", desc: "Earthy Japanese-style matcha milk tea.",      options: ML(49, 59) },
 
-  // ---- COFFEE (ESPRESSO) — Iced 16oz or Hot 12oz ----
-  { id: "c1", category: "Coffee", name: "Americano",         emoji: "☕", desc: "Espresso with water. Bold and clean.",       options: COFFEE(79) },
-  { id: "c2", category: "Coffee", name: "Cafe Latte",        emoji: "☕", desc: "Espresso with steamed milk.",                options: COFFEE(89) },
-  { id: "c3", category: "Coffee", name: "Dalgona Espresso",  emoji: "☕", desc: "Whipped coffee cream over milk & espresso.", options: COFFEE(99) },
-  { id: "c4", category: "Coffee", name: "Spanish Latte",     emoji: "☕", desc: "Sweetened condensed milk latte.",            options: COFFEE(99) },
-  { id: "c5", category: "Coffee", name: "Vanilla Latte",     emoji: "☕", desc: "Smooth latte with vanilla syrup.",           options: COFFEE(99) },
-  { id: "c6", category: "Coffee", name: "Mocha Latte",       emoji: "☕", desc: "Espresso, milk and chocolate.",              options: COFFEE(99) },
-  { id: "c7", category: "Coffee", name: "White Mocha Latte", emoji: "☕", desc: "Espresso, milk and white chocolate.",        options: COFFEE(99) },
-  { id: "c8", category: "Coffee", name: "Caramel Macchiato", emoji: "☕", desc: "Vanilla milk, espresso and caramel drizzle.",options: COFFEE(99) },
+  // ---- COFFEE (ESPRESSO) â€” Iced 16oz or Hot 12oz ----
+  { id: "c1", category: "Coffee", name: "Americano",         emoji: "â˜•", desc: "Espresso with water. Bold and clean.",       options: COFFEE(79) },
+  { id: "c2", category: "Coffee", name: "Cafe Latte",        emoji: "â˜•", desc: "Espresso with steamed milk.",                options: COFFEE(89) },
+  { id: "c3", category: "Coffee", name: "Dalgona Espresso",  emoji: "â˜•", desc: "Whipped coffee cream over milk & espresso.", options: COFFEE(99) },
+  { id: "c4", category: "Coffee", name: "Spanish Latte",     emoji: "â˜•", desc: "Sweetened condensed milk latte.",            options: COFFEE(99) },
+  { id: "c5", category: "Coffee", name: "Vanilla Latte",     emoji: "â˜•", desc: "Smooth latte with vanilla syrup.",           options: COFFEE(99) },
+  { id: "c6", category: "Coffee", name: "Mocha Latte",       emoji: "â˜•", desc: "Espresso, milk and chocolate.",              options: COFFEE(99) },
+  { id: "c7", category: "Coffee", name: "White Mocha Latte", emoji: "â˜•", desc: "Espresso, milk and white chocolate.",        options: COFFEE(99) },
+  { id: "c8", category: "Coffee", name: "Caramel Macchiato", emoji: "â˜•", desc: "Vanilla milk, espresso and caramel drizzle.",options: COFFEE(99) },
 
   // ---- FRESH LEMON (M 16oz / L 22oz) ----
-  // ⚠ Classic Lemonade's price was smudged on the menu photo — 59 / 69 is a best guess. Please confirm.
-  { id: "l1", category: "Fresh Lemon", name: "Classic Lemonade", emoji: "🍋", desc: "Freshly squeezed lemonade.",              options: ML(59, 69) },
-  { id: "l2", category: "Fresh Lemon", name: "Lemon Yakult",     emoji: "🍋", desc: "Fresh lemon with creamy Yakult.",          options: ML(69, 79) },
+  // âš  Classic Lemonade's price was smudged on the menu photo â€” 59 / 69 is a best guess. Please confirm.
+  { id: "l1", category: "Fresh Lemon", name: "Classic Lemonade", emoji: "ðŸ‹", desc: "Freshly squeezed lemonade.",              options: ML(59, 69) },
+  { id: "l2", category: "Fresh Lemon", name: "Lemon Yakult",     emoji: "ðŸ‹", desc: "Fresh lemon with creamy Yakult.",          options: ML(69, 79) },
 
   // ---- NON COFFEE (16oz) ----
-  { id: "n1", category: "Non Coffee", name: "Strawberry Milk", emoji: "🍓", desc: "Strawberry puree with cold milk.",          options: ONE_SIZE(79) },
-  { id: "n2", category: "Non Coffee", name: "Matchaberry",     emoji: "🍵", desc: "Matcha meets strawberry. Sweet & earthy.",  options: ONE_SIZE(79) },
-  { id: "n3", category: "Non Coffee", name: "Milky Matcha",    emoji: "🍵", desc: "Creamy matcha latte.",                      options: ONE_SIZE(79) },
+  { id: "n1", category: "Non Coffee", name: "Strawberry Milk", emoji: "ðŸ“", desc: "Strawberry puree with cold milk.",          options: ONE_SIZE(79) },
+  { id: "n2", category: "Non Coffee", name: "Matchaberry",     emoji: "ðŸµ", desc: "Matcha meets strawberry. Sweet & earthy.",  options: ONE_SIZE(79) },
+  { id: "n3", category: "Non Coffee", name: "Milky Matcha",    emoji: "ðŸµ", desc: "Creamy matcha latte.",                      options: ONE_SIZE(79) },
 
   // ---- FRAPPE (M 16oz / L 22oz) ----
-  // ⚠ Only "Cookies & Cream" was visible on the photo (the board is cut off). Add other frappes here.
-  { id: "p1", category: "Frappe", name: "Cookies & Cream", emoji: "🥤", desc: "Blended cookies & cream frappe.", options: ML(99, 119) },
+  // âš  Only "Cookies & Cream" was visible on the photo (the board is cut off). Add other frappes here.
+  { id: "p1", category: "Frappe", name: "Cookies & Cream", emoji: "ðŸ¥¤", desc: "Blended cookies & cream frappe.", options: ML(99, 119) },
 ];
 
 /* ---------------------------------------------------------
@@ -155,7 +155,7 @@ const state = {
   custom: null,           // drink currently being customized
 };
 
-const money = (n) => "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n) => "â‚±" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatTicket = (n) => "SC-" + String(n).padStart(4, "0");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -250,7 +250,7 @@ async function placeOrder(o) {
 
   if (error) {
     console.error("Place order failed:", error);
-    alert("❌ Order not saved.\n\nReason: " + error.message);
+    alert("âŒ Order not saved.\n\nReason: " + error.message);
     return null;
   }
   const row = Array.isArray(data) ? data[0] : data;
@@ -262,7 +262,7 @@ async function updateOrder(id, patch, what) {
   const { data, error } = await supabaseClient.from("orders").update(patch).eq("id", id).select("id");
   if (error || !data || data.length === 0) {
     console.error(`Update ${what} failed:`, error);
-    alert(`❌ Could not update ${what}: ` + (error ? error.message : "not allowed. Please sign in again."));
+    alert(`âŒ Could not update ${what}: ` + (error ? error.message : "not allowed. Please sign in again."));
     return false;
   }
   return true;
@@ -353,7 +353,7 @@ function renderMenu() {
   Object.entries(grouped).forEach(([cat, items]) => {
     const heading = document.createElement("div");
     heading.className = "menuCategory";
-    const note = CATEGORY_NOTES[cat] || (items[0].options.length > 1 ? "Medium 16oz · Large 22oz" : "");
+    const note = CATEGORY_NOTES[cat] || (items[0].options.length > 1 ? "Medium 16oz Â· Large 22oz" : "");
     heading.innerHTML = `<h3>${esc(cat)}</h3>${note ? `<small>${esc(note)}</small>` : ""}`;
     menuGrid.appendChild(heading);
     items.forEach((item) => menuGrid.appendChild(buildDrinkCard(item)));
@@ -444,13 +444,13 @@ function addToCart(line, qty) {
   const room = MAX_QTY_PER_ITEM - itemQty(line.itemId);
   const add = Math.min(qty, Math.max(0, room));
   if (add <= 0) {
-    toast(`Limit reached — max ${MAX_QTY_PER_ITEM} per item per order.`);
+    toast(`Limit reached â€” max ${MAX_QTY_PER_ITEM} per item per order.`);
     return 0;
   }
   const key = lineKeyOf(line);
   if (state.cart[key]) state.cart[key].qty += add;
   else state.cart[key] = { ...line, addons: [...line.addons], qty: add };
-  if (add < qty) toast(`Only ${add} added — max ${MAX_QTY_PER_ITEM} per item per order.`);
+  if (add < qty) toast(`Only ${add} added â€” max ${MAX_QTY_PER_ITEM} per item per order.`);
   return add;
 }
 
@@ -461,7 +461,7 @@ function setLineQty(key, wanted) {
   const max = MAX_QTY_PER_ITEM - others;
   let next = Math.floor(Number(wanted));
   if (!Number.isFinite(next)) next = l.qty;
-  if (next > max) { next = max; toast(`Limit reached — max ${MAX_QTY_PER_ITEM} per item per order.`); }
+  if (next > max) { next = max; toast(`Limit reached â€” max ${MAX_QTY_PER_ITEM} per item per order.`); }
   if (next <= 0) delete state.cart[key];
   else l.qty = next;
   renderMenu();
@@ -485,11 +485,11 @@ function renderCart() {
       <div class="cartItem__info">
         <div class="cartItem__name">${esc(l.baseName)}</div>
         <div class="cartItem__opts">${esc(l.optsText)}</div>
-        <div class="cartItem__price">${money(l.price)} ea · ${money(l.lineTotal)}</div>
+        <div class="cartItem__price">${money(l.price)} ea Â· ${money(l.lineTotal)}</div>
       </div>
       <div class="cartItem__side">
         <div class="stepper">
-          <button data-act="minus" aria-label="Less">−</button>
+          <button data-act="minus" aria-label="Less">âˆ’</button>
           <input type="number" inputmode="numeric" min="1" max="${MAX_QTY_PER_ITEM}" value="${l.qty}" aria-label="Quantity">
           <button data-act="plus" aria-label="More" ${room <= 0 ? "disabled" : ""}>+</button>
         </div>
@@ -523,7 +523,7 @@ const customBody = el("customBody");
 function openCustomize(itemId) {
   const item = findItem(itemId);
   if (itemQty(itemId) >= MAX_QTY_PER_ITEM) {
-    toast(`Limit reached — max ${MAX_QTY_PER_ITEM} per item per order.`);
+    toast(`Limit reached â€” max ${MAX_QTY_PER_ITEM} per item per order.`);
     return;
   }
   state.custom = { itemId, optKey: item.options[0].key, sugar: DEFAULT_SUGAR, addons: [], qty: 1 };
@@ -594,13 +594,13 @@ function renderCustomize() {
         <div class="hint">${room < MAX_QTY_PER_ITEM ? `${room} more allowed` : `Max ${MAX_QTY_PER_ITEM}`} per item</div>
       </div>
       <div class="stepper">
-        <button type="button" data-q="-1" aria-label="Less">−</button>
+        <button type="button" data-q="-1" aria-label="Less">âˆ’</button>
         <input type="number" id="customQty" inputmode="numeric" min="1" max="${room}" value="${c.qty}" aria-label="Quantity">
         <button type="button" data-q="1" aria-label="More">+</button>
       </div>
     </div>
     <button type="button" class="btn btn--primary btn--block" id="customAddBtn">
-      Add to Order · <span id="customTotal">${money(customUnitPrice() * c.qty)}</span>
+      Add to Order Â· <span id="customTotal">${money(customUnitPrice() * c.qty)}</span>
     </button>
   `;
 
@@ -616,7 +616,7 @@ function renderCustomize() {
   const clampQty = (v) => {
     let n = Math.floor(Number(v));
     if (!Number.isFinite(n) || n < 1) n = 1;
-    if (n > room) { n = room; toast(`Limit reached — max ${MAX_QTY_PER_ITEM} per item per order.`); }
+    if (n > room) { n = room; toast(`Limit reached â€” max ${MAX_QTY_PER_ITEM} per item per order.`); }
     return n;
   };
   customBody.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => {
@@ -637,7 +637,7 @@ function renderCustomize() {
     closeCustomize();
     renderMenu();
     renderCart();
-    if (added === c.qty) toast(`${added} × ${item.name} added to your tray 🧋`);
+    if (added === c.qty) toast(`${added} Ã— ${item.name} added to your tray ðŸ§‹`);
   });
 }
 
@@ -660,7 +660,7 @@ function openCheckout() {
   const pt = el("pickupTime");
   pt.min = PICKUP_OPEN;
   pt.max = PICKUP_CLOSE;
-  document.querySelector(".field__hint").textContent = `Pickup hours: ${formatTime12(PICKUP_OPEN)} – ${formatTime12(PICKUP_CLOSE)}`;
+  document.querySelector(".field__hint").textContent = `Pickup hours: ${formatTime12(PICKUP_OPEN)} â€“ ${formatTime12(PICKUP_CLOSE)}`;
   renderCheckoutSummary();
   checkoutOverlay.classList.add("is-open");
 }
@@ -680,7 +680,7 @@ document.querySelectorAll('input[name="payment"]').forEach((r) => {
 
 function renderCheckoutSummary() {
   const lines = cartLines();
-  const rows = lines.map((l) => `<div class="row"><span>${esc(l.name)} × ${l.qty}</span><b>${money(l.lineTotal)}</b></div>`).join("");
+  const rows = lines.map((l) => `<div class="row"><span>${esc(l.name)} Ã— ${l.qty}</span><b>${money(l.lineTotal)}</b></div>`).join("");
   el("modalSummary").innerHTML = `${rows}<div class="totalRow"><span>Total</span><strong>${money(cartTotal())}</strong></div>`;
 }
 
@@ -724,7 +724,7 @@ checkoutForm.addEventListener("submit", async (e) => {
 
   const submitBtn = checkoutForm.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
-  submitBtn.textContent = "Placing order…";
+  submitBtn.textContent = "Placing orderâ€¦";
 
   const savedOrder = await placeOrder(orderArgs);
 
@@ -753,7 +753,7 @@ checkoutForm.addEventListener("submit", async (e) => {
 const confirmOverlay = el("confirmOverlay");
 function showConfirmation(order) {
   el("confirmNumber").textContent = order.ticket;
-  const itemsList = order.items.map((i) => `${i.qty}× ${esc(i.name)}`).join("<br>");
+  const itemsList = order.items.map((i) => `${i.qty}Ã— ${esc(i.name)}`).join("<br>");
   el("confirmDetails").innerHTML = `
     <div class="row"><span>Name</span><b>${esc(order.studentName)}</b></div>
     <div class="row"><span>Section</span><b>${esc(order.studentSection)}</b></div>
@@ -783,7 +783,7 @@ function closeAllModals() {
 --------------------------------------------------------- */
 async function renderTracker(silent) {
   const list = el("trackerList");
-  if (!silent) list.innerHTML = `<p class="trackerEmpty">Loading…</p>`;
+  if (!silent) list.innerHTML = `<p class="trackerEmpty">Loadingâ€¦</p>`;
 
   let mine = [];
   if (state.myTicketIds.length) mine = await fetchMyOrders(state.myTicketIds);
@@ -808,7 +808,7 @@ async function runTrackerSearch() {
   if (!ticket && !name) { renderTracker(); return; }
   if (!ticket || !name) { toast("Enter both your ticket number and the name used on the order."); return; }
 
-  list.innerHTML = `<p class="trackerEmpty">Searching…</p>`;
+  list.innerHTML = `<p class="trackerEmpty">Searchingâ€¦</p>`;
   const results = await findOrders(ticket, name);
   list.innerHTML = "";
   if (results.length === 0) {
@@ -825,7 +825,7 @@ function statusBadgeClass(status) {
 function buildOrderCard(o, isAdmin) {
   const card = document.createElement("div");
   card.className = "orderCard";
-  const itemsText = o.items.map((i) => `${i.qty}× ${esc(i.name)}`).join("<br>");
+  const itemsText = o.items.map((i) => `${i.qty}Ã— ${esc(i.name)}`).join("<br>");
   const payBadge = o.payment === "gcash"
     ? `<span class="badge ${o.paid ? "badge--paid" : "badge--unpaid"}">${o.paid ? "GCash Verified" : "GCash Ref " + esc(o.gcashRef)}</span>`
     : `<span class="badge badge--unpaid">Cash on Pickup</span>`;
@@ -834,7 +834,7 @@ function buildOrderCard(o, isAdmin) {
     <div class="orderCard__head">
       <div>
         <div class="orderCard__num">${o.ticket}</div>
-        <div class="orderCard__meta">${esc(o.studentName)} · ${esc(o.studentSection)} · ${esc(o.pickupTime)}</div>
+        <div class="orderCard__meta">${esc(o.studentName)} Â· ${esc(o.studentSection)} Â· ${esc(o.pickupTime)}</div>
       </div>
       <span class="badge ${statusBadgeClass(o.status)}">${esc(o.status)}</span>
     </div>
@@ -862,7 +862,7 @@ function buildOrderCard(o, isAdmin) {
     if (idx > 0) {
       const backBtn = document.createElement("button");
       backBtn.className = "smallBtn smallBtn--revert";
-      backBtn.textContent = "↩ Revert to " + flow[idx - 1];
+      backBtn.textContent = "â†© Revert to " + flow[idx - 1];
       backBtn.addEventListener("click", async () => { await updateOrderStatus(o.id, flow[idx - 1]); renderAdmin(); });
       actions.appendChild(backBtn);
     }
@@ -898,7 +898,7 @@ async function tryAdminLogin() {
 
   const btn = el("adminLoginBtn");
   btn.disabled = true;
-  btn.textContent = "Signing in…";
+  btn.textContent = "Signing inâ€¦";
 
   let ok = false;
   let msg = "Incorrect password.";
@@ -947,7 +947,7 @@ async function renderAdmin() {
 
   el("adminDate").textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-  el("orderList").innerHTML = `<p class="trackerEmpty">Loading orders…</p>`;
+  el("orderList").innerHTML = `<p class="trackerEmpty">Loading ordersâ€¦</p>`;
   state.orders = await fetchAllOrders();
 
   renderAdminStats();
@@ -1011,5 +1011,272 @@ showView("student");
 
 if (missingEls.length) {
   console.error("index.html is missing elements script.js expects:", [...new Set(missingEls)]);
-  showBanner("⚠️ The site files don't match (index.html is out of date). Re-upload index.html, script.js, styles.css and refresh.");
+  showBanner("âš ï¸ The site files don't match (index.html is out of date). Re-upload index.html, script.js, styles.css and refresh.");
 }
+
+
+/* ============================================================
+   Sugar Crush: Menu Availability feature (added) - SC_AVAIL_START
+   Additive only: no existing functions are modified.
+   Staff mark drinks Sold Out from the staff panel. Customers see
+   a greyed-out SOLD OUT card and cannot order that drink.
+   Saves to the Supabase table menu_availability when it exists
+   (syncs to all devices), otherwise to this device's storage.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var SUPA_URL = 'https://rlgvlbhikzlgsyhhcghw.supabase.co';
+  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3ZsYmhpa3psZ3N5aGhjZ2h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzM3NzIsImV4cCI6MjEwNzU0OTc3Mn0._YjnWtcByF31UGFd5JFI8-Ew0V8KjCaFhwpnLeAts0k';
+  var LS_KEY = 'sc_menu_soldout_v1';
+
+  var MENU = [
+    ['Fruitti', ['Lychee', 'Strawberry', 'Mango', 'Melon', 'Blueberry', 'Green Apple']],
+    ['Milk Tea', ['Wintermelon', 'Cookies & Cream', 'Okinawa', 'Salted Caramel', 'Taro', 'Belgian Chocolate', 'Matcha']],
+    ['Coffee (Espresso)', ['Americano', 'Cafe Latte', 'Dalgona Espresso', 'Spanish Latte', 'Vanilla Latte', 'Mocha Latte', 'White Mocha Latte', 'Caramel Macchiato']],
+    ['Fresh Lemon', ['Classic Lemonade', 'Lemon Yakult']],
+    ['Non Coffee', ['Strawberry Milk', 'Matchaberry', 'Milky Matcha']],
+    ['Frappe', ['Cookies & Cream']]
+  ];
+
+  var soldOut = {};
+  var db = null;
+  var syncReady = false;
+  var toastEl = null;
+  var toastTimer = null;
+
+  function norm(s) {
+    s = String(s || '').replace(/\(.*?\)/g, ' ');
+    if (s.normalize) { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+    return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  function keyFor(cat, name) { return norm(cat) + '::' + norm(name); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function toast(msg) {
+    if (!document.body) return;
+    if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'sc-toast'; document.body.appendChild(toastEl); }
+    toastEl.textContent = msg;
+    toastEl.className = 'sc-toast is-show';
+    if (toastTimer) { clearTimeout(toastTimer); }
+    toastTimer = setTimeout(function () { toastEl.className = 'sc-toast'; }, 2600);
+  }
+
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(soldOut)); } catch (e) {}
+  }
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) { soldOut = JSON.parse(raw) || {}; }
+    } catch (e) { soldOut = {}; }
+  }
+
+  function initDB() {
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        db = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+      }
+    } catch (e) { db = null; }
+  }
+
+  function loadDB(cb) {
+    if (!db) { cb(false); return; }
+    try {
+      db.from('menu_availability').select('item_key, unavailable').then(function (res) {
+        if (!res || res.error) { cb(false); return; }
+        var rows = res.data || [];
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i] && rows[i].item_key) {
+            if (rows[i].unavailable) { soldOut[rows[i].item_key] = true; }
+            else { delete soldOut[rows[i].item_key]; }
+          }
+        }
+        cb(true);
+      }).catch(function () { cb(false); });
+    } catch (e) { cb(false); }
+  }
+
+  function saveKey(key, isOut, cb) {
+    if (isOut) { soldOut[key] = true; } else { delete soldOut[key]; }
+    saveLocal();
+    if (!db) { cb(false); return; }
+    try {
+      db.from('menu_availability').upsert({ item_key: key, unavailable: isOut ? true : false, updated_at: new Date().toISOString() }).then(function (res) {
+        cb(!res || !res.error);
+      }).catch(function () { cb(false); });
+    } catch (e) { cb(false); }
+  }
+
+  function watchDB() {
+    if (!db || !db.channel) return;
+    try {
+      db.channel('sc-menu-avail').on('postgres_changes', { event: '*', schema: 'public', table: 'menu_availability' }, function () {
+        loadDB(function () { applySoldOut(); renderPanel(); });
+      }).subscribe();
+    } catch (e) {}
+  }
+
+  function applySoldOut() {
+    var menu = document.querySelector('.menu');
+    if (!menu) return;
+    var nodes = menu.querySelectorAll('.menuCategory, .foodCard');
+    var cat = '';
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.classList.contains('menuCategory')) {
+        var h = el.querySelector('h3');
+        if (h) { cat = h.textContent || ''; }
+      } else {
+        markCard(el, cat);
+      }
+    }
+  }
+
+  function markCard(card, cat) {
+    var nameEl = card.querySelector('.foodCard__name');
+    if (!nameEl) return;
+    var key = keyFor(cat, nameEl.textContent);
+    var isOut = soldOut[key] ? true : false;
+    var badge = card.querySelector('.sc-soldoutBadge');
+    if (isOut) {
+      if (!card.classList.contains('sc-soldout')) { card.classList.add('sc-soldout'); }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'sc-soldoutBadge';
+        badge.textContent = 'SOLD OUT';
+        card.appendChild(badge);
+      }
+    } else {
+      if (card.classList.contains('sc-soldout')) { card.classList.remove('sc-soldout'); }
+      if (badge && badge.parentNode) { badge.parentNode.removeChild(badge); }
+    }
+    var add = card.querySelector('.addBtn');
+    if (add) { add.disabled = isOut; }
+  }
+
+  function isVisible(el) {
+    if (!el) return false;
+    if (el.offsetParent !== null) return true;
+    if (el.getClientRects && el.getClientRects().length > 0) return true;
+    return false;
+  }
+
+  function buildPanel() {
+    if (document.getElementById('scAvailPanel')) return;
+    var anchor = document.querySelector('.orderList');
+    if (!anchor || !isVisible(anchor)) return;
+    var panel = document.createElement('div');
+    panel.className = 'sc-availPanel';
+    panel.id = 'scAvailPanel';
+    panel.innerHTML =
+      '<h3>Menu Availability</h3>' +
+      '<p class="sc-availNote">Mark drinks as Sold Out when you run out. Sold-out drinks get a greyed-out SOLD OUT card and customers cannot order them. Tap a button to toggle.</p>' +
+      '<div class="sc-availList"></div>' +
+      '<p class="sc-availSync"></p>';
+    var list = panel.querySelector('.sc-availList');
+    list.addEventListener('click', onPanelClick);
+    anchor.parentNode.insertBefore(panel, anchor);
+    renderPanel();
+  }
+
+  function onPanelClick(e) {
+    var btn = e.target && e.target.closest ? e.target.closest('.sc-availBtn') : null;
+    if (!btn) return;
+    var key = btn.getAttribute('data-key');
+    if (!key) return;
+    var nextOut = soldOut[key] ? false : true;
+    saveKey(key, nextOut, function (ok) {
+      if (ok) { syncReady = true; }
+      else if (db) { toast('Saved on this device only - the menu_availability table is not set up in Supabase yet.'); }
+      applySoldOut();
+      renderPanel();
+    });
+  }
+
+  function renderPanel() {
+    var panel = document.getElementById('scAvailPanel');
+    if (!panel) return;
+    var list = panel.querySelector('.sc-availList');
+    var html = '';
+    for (var g = 0; g < MENU.length; g++) {
+      html += '<div class="sc-availCat">' + esc(MENU[g][0]) + '</div>';
+      var items = MENU[g][1];
+      for (var i = 0; i < items.length; i++) {
+        var key = keyFor(MENU[g][0], items[i]);
+        var out = soldOut[key] ? true : false;
+        html += '<div class="sc-availRow' + (out ? ' is-out' : '') + '">' +
+          '<span>' + esc(items[i]) + '</span>' +
+          '<button type="button" class="sc-availBtn' + (out ? ' is-out' : '') + '" data-key="' + esc(key) + '">' +
+          (out ? 'Sold Out - restore' : 'Available') +
+          '</button></div>';
+      }
+    }
+    list.innerHTML = html;
+    var sync = panel.querySelector('.sc-availSync');
+    if (sync) {
+      sync.className = 'sc-availSync' + (syncReady ? ' is-on' : '');
+      sync.textContent = syncReady
+        ? 'Synced: changes show on every customer device (menu_availability table).'
+        : 'This device only. For all customers, create the menu_availability table in Supabase (SQL is in the chat).';
+    }
+  }
+
+  var scheduled = false;
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(function () {
+      scheduled = false;
+      applySoldOut();
+      buildPanel();
+    }, 120);
+  }
+
+  function startObserver() {
+    if (!window.MutationObserver) {
+      setInterval(schedule, 2000);
+      return;
+    }
+    var mo = new MutationObserver(schedule);
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('.foodCard.sc-soldout')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  function init() {
+    loadLocal();
+    initDB();
+    loadDB(function (ok) {
+      syncReady = ok;
+      applySoldOut();
+      renderPanel();
+    });
+    applySoldOut();
+    buildPanel();
+    startObserver();
+    watchDB();
+    if (db) {
+      setInterval(function () {
+        loadDB(function (ok) {
+          if (ok) { applySoldOut(); renderPanel(); }
+        });
+      }, 30000);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+/* SC_AVAIL_END */
