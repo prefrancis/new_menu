@@ -159,6 +159,8 @@ const state = {
   adminStatusFilter: "All",
   unavailableItems: new Set(Array.isArray(savedMenuSettings.unavailable) ? savedMenuSettings.unavailable : []),
   menuLoaded: false,
+  unavailableAddons: new Set(Array.isArray(savedMenuSettings.unavailableAddons) ? savedMenuSettings.unavailableAddons : []),
+  addonsLoaded: false,
   custom: null,           // drink currently being customized
 };
 
@@ -414,7 +416,7 @@ function itemQty(itemId) {
 }
 
 function addonsFor(item) {
-  return ADDONS.filter((a) => !a.only || a.only.includes(item.category));
+  return ADDONS.filter((a) => !state.unavailableAddons.has(a.id) && (!a.only || a.only.includes(item.category)));
 }
 
 // Expand a stored cart line into everything the UI needs
@@ -715,6 +717,9 @@ checkoutForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  const unavailableAddonInCart = ADDONS.find((a) => state.unavailableAddons.has(a.id) && Object.values(state.cart).some((line) => line.addons.includes(a.id)));
+  if (unavailableAddonInCart) { toast(`${unavailableAddonInCart.name} is unavailable. Remove the affected item from your tray to continue.`); return; }
+
   const unavailableInCart = MENU.find((m) => state.unavailableItems.has(m.id) && itemQty(m.id) > 0);
   if (unavailableInCart) { toast(`${unavailableInCart.name} is unavailable. Remove it from your tray to continue.`); return; }
 
@@ -956,7 +961,7 @@ el("adminSearch").addEventListener("input", renderAdminOrderList);
 
 function persistMenuSettings() {
   const items = Object.fromEntries(MENU.map((item) => [item.id, { category: item.category, name: item.name, emoji: item.emoji, desc: item.desc, options: item.options }]));
-  try { localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify({ items, unavailable: [...state.unavailableItems] })); } catch (e) {}
+  try { localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify({ items, unavailable: [...state.unavailableItems], unavailableAddons: [...state.unavailableAddons] })); } catch (e) {}
 }
 function applySharedMenuRows(rows) {
   rows.forEach((row) => {
@@ -979,6 +984,43 @@ async function loadSharedMenu(seedIfEmpty = false) {
 
   return true;
 }
+async function loadSharedAddons(seedIfEmpty = false) {
+  const { data, error } = await supabaseClient.from("menu_addons").select("id,available");
+  if (error) { console.error("Could not load shared add-ons:", error.message); return false; }
+  if (!data.length && seedIfEmpty) {
+    const initial = ADDONS.map((addon) => ({ id: addon.id, available: !state.unavailableAddons.has(addon.id) }));
+    const seeded = await supabaseClient.from("menu_addons").upsert(initial);
+    if (seeded.error) { console.error("Could not initialize shared add-ons:", seeded.error.message); return false; }
+    applySharedAddonRows(initial);
+  } else if (data.length) applySharedAddonRows(data);
+  return true;
+}
+function applySharedAddonRows(rows) {
+  const unavailable = new Set(rows.filter((row) => row.available === false).map((row) => row.id));
+  state.unavailableAddons = unavailable; state.addonsLoaded = true; persistMenuSettings();
+  if (state.custom) { state.custom.addons = state.custom.addons.filter((id) => !unavailable.has(id)); renderCustomize(); }
+  if (state.adminAuthed) renderAddonAvailability();
+}
+function subscribeSharedAddons() {
+  supabaseClient.channel("shared-addon-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "menu_addons" }, async () => { await loadSharedAddons(false); })
+    .subscribe();
+}
+function renderAddonAvailability() {
+  el("addonAvailabilityForm").innerHTML = `${ADDONS.map((addon) => `<label class="addonAvailability__row"><span>${esc(addon.name)}${addon.only ? ` <small>(${esc(addon.only.join(", "))} only)</small>` : ""}</span><span><input type="checkbox" name="${esc(addon.id)}" ${state.unavailableAddons.has(addon.id) ? "" : "checked"}> Available</span></label>`).join("")}
+    <button class="btn btn--primary" type="submit">Save add-on availability</button>`;
+}
+el("addonAvailabilityForm").addEventListener("submit", async (event) => {
+  event.preventDefault(); if (!state.adminAuthed) return;
+  const form = new FormData(event.currentTarget);
+  const updated = ADDONS.map((addon) => ({ id: addon.id, available: form.has(addon.id) }));
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true; button.textContent = "Saving…";
+  const { error } = await supabaseClient.from("menu_addons").upsert(updated);
+  button.disabled = false; button.textContent = "Save add-on availability";
+  if (error) { toast("Could not save add-on availability. Check the database setup and try again."); console.error("Could not save add-ons:", error.message); return; }
+  applySharedAddonRows(updated); toast("Add-on availability saved for all devices.");
+});
 function subscribeSharedMenu() {
   supabaseClient.channel("shared-menu-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, async () => { await loadSharedMenu(false); })
@@ -1024,7 +1066,9 @@ async function renderAdmin() {
   el("adminDate").textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   if (!state.menuLoaded) await loadSharedMenu(true);
+  if (!state.addonsLoaded) await loadSharedAddons(true);
   renderMenuEditor();
+  renderAddonAvailability();
   el("orderList").innerHTML = `<p class="trackerEmpty">Loading orders…</p>`;
   state.orders = await fetchAllOrders();
 
@@ -1085,6 +1129,8 @@ renderCatbar();
 renderMenu();
 loadSharedMenu(false);
 subscribeSharedMenu();
+loadSharedAddons(false);
+subscribeSharedAddons();
 renderCart();
 refreshHeroTicket();
 showView("student");
