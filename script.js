@@ -219,6 +219,8 @@ function mapRow(row) {
     total: Number(row.total),
     status: row.status,
     createdAt: row.created_at,
+    cancelledAt: row.cancelled_at,
+    studentEmail: row.student_email,
   };
 }
 
@@ -298,8 +300,10 @@ async function findOrders(ticketText, name) {
 // Live updates for staff (the database only sends these to signed-in staff)
 supabaseClient
   .channel("orders-changes")
-  .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+  .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
     refreshHeroTicket();
+    if (state.adminAuthed && payload.eventType === "INSERT") notifyStaffOrder(payload.new?.id, "New order received");
+    if (state.adminAuthed && payload.eventType === "UPDATE" && payload.new?.status === "Cancelled" && payload.old?.status !== "Cancelled") notifyStaffOrder(payload.new?.id, "An order was cancelled");
     if (state.adminAuthed && !views.admin.hidden) renderAdmin();
   })
   .subscribe();
@@ -838,7 +842,7 @@ async function runTrackerSearch() {
 }
 
 function statusBadgeClass(status) {
-  return { Pending: "badge--pending", Preparing: "badge--preparing", Ready: "badge--ready", Completed: "badge--completed" }[status];
+  return { Pending: "badge--pending", Confirmed: "badge--pending", Preparing: "badge--preparing", Ready: "badge--ready", Completed: "badge--completed", Cancelled: "badge--cancelled" }[status] || "badge--completed";
 }
 
 function buildOrderCard(o, isAdmin) {
@@ -854,6 +858,9 @@ function buildOrderCard(o, isAdmin) {
       <div>
         <div class="orderCard__num">${o.ticket}</div>
         <div class="orderCard__meta">${esc(o.studentName)} · ${esc(o.studentSection)} · ${esc(o.pickupTime)}</div>
+        ${o.createdAt ? `<div class="orderCard__meta">Submitted: ${esc(new Date(o.createdAt).toLocaleString())}</div>` : ""}
+        ${isAdmin && o.studentEmail ? `<div class="orderCard__meta">${esc(o.studentEmail)}</div>` : ""}
+        ${o.cancelledAt ? `<div class="orderCard__meta">Cancelled: ${esc(new Date(o.cancelledAt).toLocaleString())}</div>` : ""}
       </div>
       <span class="badge ${statusBadgeClass(o.status)}">${esc(o.status)}</span>
     </div>
@@ -864,7 +871,7 @@ function buildOrderCard(o, isAdmin) {
     </div>
   `;
 
-  if (isAdmin) {
+  if (isAdmin && o.status !== "Cancelled") {
     const actions = document.createElement("div");
     actions.className = "adminOrder__actions";
 
@@ -893,6 +900,21 @@ function buildOrderCard(o, isAdmin) {
       actions.appendChild(payBtn);
     }
     card.appendChild(actions);
+  }
+
+  if (!isAdmin && ["Pending", "Confirmed"].includes(o.status)) {
+    const cancel = document.createElement("button");
+    cancel.className = "smallBtn";
+    cancel.textContent = "Cancel Order";
+    cancel.addEventListener("click", async () => {
+      if (!window.confirm("Are you sure you want to cancel this order?")) return;
+      cancel.disabled = true;
+      const { error } = await supabaseClient.rpc("cancel_order", { p_order_id: o.id });
+      if (error) { cancel.disabled = false; toast("This order could not be cancelled. It may already be in preparation."); console.error("Cancel order failed:", error); return; }
+      toast("Order cancelled.");
+      renderTracker();
+    });
+    card.appendChild(cancel);
   }
 
   return card;
@@ -1062,6 +1084,7 @@ async function renderAdmin() {
   el("adminLogin").hidden = state.adminAuthed;
   el("adminDash").hidden = !state.adminAuthed;
   if (!state.adminAuthed) return;
+  ensureNotificationControls();
 
   el("adminDate").textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
@@ -1134,6 +1157,51 @@ subscribeSharedAddons();
 renderCart();
 refreshHeroTicket();
 showView("student");
+
+// Welcome instructions appear once per browser session and can be reopened from Help.
+const welcomeOverlay = el("welcomeOverlay");
+function openWelcome() { welcomeOverlay.hidden = false; welcomeOverlay.classList.add("is-open"); }
+function closeWelcome() { welcomeOverlay.classList.remove("is-open"); welcomeOverlay.hidden = true; sessionStorage.setItem("sugarcrush_welcome_seen", "1"); }
+el("helpInstructionsBtn").addEventListener("click", openWelcome);
+el("dismissWelcomeBtn").addEventListener("click", closeWelcome);
+if (!sessionStorage.getItem("sugarcrush_welcome_seen")) openWelcome();
+
+// The stream callback only fires for events received after subscription, so refreshes do not replay old orders.
+const notifiedOrderIds = new Set();
+let notificationCount = 0;
+let notificationSoundEnabled = false;
+function notifyStaffOrder(id, message) {
+  const notificationKey = `${id || "unknown"}:${message}`;
+  if (notifiedOrderIds.has(notificationKey)) return;
+  notifiedOrderIds.add(notificationKey);
+  notificationCount++;
+  const badge = document.getElementById("newOrderBadge");
+  if (badge) { badge.textContent = String(notificationCount); badge.hidden = false; }
+  toast(message);
+  if (notificationSoundEnabled) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.frequency.value = 880; gain.gain.value = 0.08;
+      oscillator.connect(gain); gain.connect(ctx.destination);
+      oscillator.start(); oscillator.stop(ctx.currentTime + 0.16);
+      oscillator.onended = () => ctx.close();
+    } catch (e) { console.warn("Notification sound unavailable:", e); }
+  }
+}
+function ensureNotificationControls() {
+  const dash = el("adminDash");
+  if (document.getElementById("notificationControls") || !dash) return;
+  const row = document.createElement("div"); row.id = "notificationControls"; row.className = "adminControls";
+  row.innerHTML = '<button class="smallBtn" id="soundToggleBtn" type="button">Enable Notification Sound</button><span class="badge badge--pending" id="newOrderBadge" hidden>0</span>';
+  dash.prepend(row);
+  document.getElementById("soundToggleBtn").addEventListener("click", (event) => {
+    notificationSoundEnabled = !notificationSoundEnabled;
+    event.currentTarget.textContent = notificationSoundEnabled ? "Disable Notification Sound" : "Enable Notification Sound";
+  });
+}
 
 if (missingEls.length) {
   console.error("index.html is missing elements script.js expects:", [...new Set(missingEls)]);
