@@ -25,6 +25,7 @@
     <button class="navbtn is-active" data-view="student" id="navStudent">Order Drinks</button>
     <button class="navbtn" data-view="tracker" id="navTracker">Orders</button>
     <button class="navbtn navbtn--staff" data-view="admin" id="navAdmin">Staff Panel</button>
+    <button class="navbtn" type="button" id="helpInstructionsBtn">Help / Instructions</button>
   </nav>
 
   <button class="cartFab" id="cartFab" aria-label="Open cart">
@@ -153,6 +154,22 @@
 </div>
 
 <!-- ============ CHECKOUT MODAL ============ -->
+<div class="modalOverlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" hidden>
+  <section class="modal">
+    <div class="modal__head"><h2 id="welcomeTitle">How to Use Our Pre-Ordering System</h2></div>
+    <div class="modal__body welcomeBody">
+      <p>Good day!</p>
+      <p>We, 12 – Achievers Group 2, invite you to participate in our study by using our web-based pre-ordering system. Please read and follow the instructions below:</p>
+      <p><strong>1. Access the website before SHS recess.</strong><br>Open the provided website and place your order BEFORE the scheduled SHS recess period.</p>
+      <p><strong>2. Select your order.</strong><br>Browse the available menu, choose your desired item, and provide the required information.</p>
+      <p><strong>3. Submit your order.</strong><br>Review your order details before submitting. Please make sure that all the information is correct.</p>
+      <p><strong>4. Claim your order.</strong><br>Once your order has been submitted, proceed to Sugar Crush DURING recess and present your order confirmation to the staff.</p>
+      <p>By placing an order through the website, you are participating in the study. Please make sure to claim the order you placed.</p>
+      <p>Thank you for your cooperation and participation!</p>
+      <button class="btn btn--primary" type="button" id="dismissWelcomeBtn">I Understand</button>
+    </div>
+  </section>
+</div>
 <div class="modalOverlay" id="checkoutOverlay">
   <div class="modal" id="checkoutModal">
     <div class="modal__head">
