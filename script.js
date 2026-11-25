@@ -1,19 +1,20 @@
 /* =========================================================
-   SUGAR CRUSH MILK TEA — Pre-Order System
-   Backed by Supabase. Same `orders` table as the original
-   system (no schema changes needed) — see notes in section 8.
+   SUGAR CRUSH MILK TEA — Pre-Order System (v3)
+   Backed by Supabase. v3 features:
+   - Real-time staff sound + visual notifications (Feature 1)
+   - Student order cancellation (Feature 2)
+   - School-email gate: only @barcelonaacademy.edu.ph can
+     order — no verification codes (Feature 3, simplified)
+   - Welcome/instructions modal, once per session (Feature 4)
+   - Admin dashboard improvements (Feature 5)
 ========================================================= */
 
 /* ---------------------------------------------------------
    0. SUPABASE SETUP
-   Dashboard > Project Settings > API:
-   - Project URL  -> looks like https://xxxxx.supabase.co
-   - anon public key -> long string starting with "eyJ..."
 --------------------------------------------------------- */
 const SUPABASE_URL = "https://rlgvlbhikzlgsyhhcghw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3ZsYmhpa3psZ3N5aGhjZ2h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzM3NzIsImV4cCI6MjEwNzU0OTc3Mn0._YjnWtcByF31UGFd5JFI8-Ew0V8KjCaFhwpnLeAts0k";
 
-// A red notice at the top of the page (works even if styles.css is out of date)
 function showBanner(msg) {
   const b = document.createElement("div");
   b.setAttribute("role", "alert");
@@ -22,16 +23,20 @@ function showBanner(msg) {
   document.body.prepend(b);
 }
 
-// If the Supabase library can't load (ad blocker, school/office filter, bad connection),
-// keep the menu working and tell the customer, instead of the whole page going blank.
+// If the Supabase library can't load, keep the menu working and tell the customer.
 function offlineClient() {
   const err = { message: "Can't reach the ordering server. Check your internet connection or turn off your ad blocker, then refresh." };
   const fail = async () => ({ data: null, error: err });
-  const chain = { select() { return chain; }, order() { return chain; }, update() { return chain; }, eq() { return chain; }, then: (res) => Promise.resolve({ data: null, error: err }).then(res) };
+  const chain = { select() { return chain; }, order() { return chain; }, update() { return chain; }, eq() { return chain; }, upsert: fail, then: (res) => Promise.resolve({ data: null, error: err }).then(res) };
   const ch = { on() { return ch; }, subscribe() { return ch; } };
   return {
     rpc: fail, from: () => chain, channel: () => ch,
-    auth: { signInWithPassword: fail, signUp: fail, signOut: async () => ({ error: null }), getSession: async () => ({ data: { session: null } }), getUser: async () => ({ data: { user: null }, error: err }), onAuthStateChange() {} },
+    auth: {
+      signInWithPassword: fail,
+      signOut: async () => ({ error: null }),
+      getSession: async () => ({ data: { session: null } }),
+      onAuthStateChange() {}
+    },
   };
 }
 
@@ -47,31 +52,22 @@ try {
 /* ---------------------------------------------------------
    1. SHOP SETTINGS — EDIT HERE
 --------------------------------------------------------- */
-// Staff sign-in is password-only. The password is NOT stored in this file: it is the password of the
-// staff account in Supabase (Authentication > Users > staff@example.com). Change it there any time.
-
-const MAX_QTY_PER_ITEM = 100;   // max cups per menu item, per order (all sizes/variants combined)
-
-// Pickup time the customer can type in (24-hour "HH:MM")
-const PICKUP_OPEN = "08:00";    // 8:00 AM
-const PICKUP_CLOSE = "16:00";   // 4:00 PM
+const MAX_QTY_PER_ITEM = 100;
+const PICKUP_OPEN = "08:00";
+const PICKUP_CLOSE = "16:00";
 
 /* ---------------------------------------------------------
-   2. EDIT YOUR MENU HERE  (prices from the shop's menu board)
+   2. EDIT YOUR MENU HERE
 --------------------------------------------------------- */
-
-// Sweetness levels shown on the menu board
 const SUGAR_LEVELS = [0, 25, 50, 75, 100];
 const DEFAULT_SUGAR = 100;
 
-// Add-ons. `only` limits an add-on to certain categories.
 const ADDONS = [
   { id: "a1", name: "Tapioca Pearls",      price: 10 },
   { id: "a2", name: "Nata Jelly",          price: 10 },
   { id: "a3", name: "Extra Shot Espresso", price: 30, only: ["Coffee"] },
 ];
 
-// Size / option helpers
 const ML = (m, l) => [
   { key: "M", label: "Medium (16oz)", short: "M", price: m },
   { key: "L", label: "Large (22oz)",  short: "L", price: l },
@@ -88,7 +84,6 @@ const CATEGORY_NOTES = {
 };
 
 const MENU = [
-  // ---- FRUITTI (M 16oz / L 22oz) ----
   { id: "f1", category: "Fruitti", name: "Lychee",      emoji: "🍒", desc: "Sweet, floral lychee fruit tea.",          options: ML(39, 49) },
   { id: "f2", category: "Fruitti", name: "Strawberry",  emoji: "🍓", desc: "Juicy strawberry fruit tea.",              options: ML(39, 49) },
   { id: "f3", category: "Fruitti", name: "Mango",       emoji: "🥭", desc: "Tropical ripe mango fruit tea.",           options: ML(39, 49) },
@@ -96,8 +91,7 @@ const MENU = [
   { id: "f5", category: "Fruitti", name: "Blueberry",   emoji: "🫐", desc: "Fruity, tangy blueberry fruit tea.",       options: ML(39, 49) },
   { id: "f6", category: "Fruitti", name: "Green Apple", emoji: "🍏", desc: "Crisp and tangy green apple fruit tea.",   options: ML(39, 49) },
 
-  // ---- MILK TEA (M 16oz / L 22oz) ----
-  { id: "t1", category: "Milk Tea", name: "Wintermelon",       emoji: "🧋", desc: "Classic caramel-sweet wintermelon milk tea.", options: ML(49, 59) },
+{ id: "t1", category: "Milk Tea", name: "Wintermelon",       emoji: "🧋", desc: "Classic caramel-sweet wintermelon milk tea.", options: ML(49, 59) },
   { id: "t2", category: "Milk Tea", name: "Cookies & Cream",   emoji: "🍪", desc: "Creamy milk tea with cookie crumbs.",         options: ML(49, 59) },
   { id: "t3", category: "Milk Tea", name: "Okinawa",           emoji: "🧋", desc: "Rich brown-sugar Okinawa milk tea.",          options: ML(49, 59) },
   { id: "t4", category: "Milk Tea", name: "Salted Caramel",    emoji: "🍮", desc: "Sweet-salty caramel milk tea.",               options: ML(49, 59) },
@@ -105,8 +99,7 @@ const MENU = [
   { id: "t6", category: "Milk Tea", name: "Belgian Chocolate", emoji: "🍫", desc: "Deep chocolatey milk tea.",                   options: ML(49, 59) },
   { id: "t7", category: "Milk Tea", name: "Matcha",            emoji: "🍵", desc: "Earthy Japanese-style matcha milk tea.",      options: ML(49, 59) },
 
-  // ---- COFFEE (ESPRESSO) — Iced 16oz or Hot 12oz ----
-  { id: "c1", category: "Coffee", name: "Americano",         emoji: "☕", desc: "Espresso with water. Bold and clean.",       options: COFFEE(79) },
+{ id: "c1", category: "Coffee", name: "Americano",         emoji: "☕", desc: "Espresso with water. Bold and clean.",       options: COFFEE(79) },
   { id: "c2", category: "Coffee", name: "Cafe Latte",        emoji: "☕", desc: "Espresso with steamed milk.",                options: COFFEE(89) },
   { id: "c3", category: "Coffee", name: "Dalgona Espresso",  emoji: "☕", desc: "Whipped coffee cream over milk & espresso.", options: COFFEE(99) },
   { id: "c4", category: "Coffee", name: "Spanish Latte",     emoji: "☕", desc: "Sweetened condensed milk latte.",            options: COFFEE(99) },
@@ -115,19 +108,14 @@ const MENU = [
   { id: "c7", category: "Coffee", name: "White Mocha Latte", emoji: "☕", desc: "Espresso, milk and white chocolate.",        options: COFFEE(99) },
   { id: "c8", category: "Coffee", name: "Caramel Macchiato", emoji: "☕", desc: "Vanilla milk, espresso and caramel drizzle.",options: COFFEE(99) },
 
-  // ---- FRESH LEMON (M 16oz / L 22oz) ----
-  // ⚠ Classic Lemonade's price was smudged on the menu photo — 59 / 69 is a best guess. Please confirm.
-  { id: "l1", category: "Fresh Lemon", name: "Classic Lemonade", emoji: "🍋", desc: "Freshly squeezed lemonade.",              options: ML(59, 69) },
+{ id: "l1", category: "Fresh Lemon", name: "Classic Lemonade", emoji: "🍋", desc: "Freshly squeezed lemonade.",              options: ML(59, 69) },
   { id: "l2", category: "Fresh Lemon", name: "Lemon Yakult",     emoji: "🍋", desc: "Fresh lemon with creamy Yakult.",          options: ML(69, 79) },
 
-  // ---- NON COFFEE (16oz) ----
-  { id: "n1", category: "Non Coffee", name: "Strawberry Milk", emoji: "🍓", desc: "Strawberry puree with cold milk.",          options: ONE_SIZE(79) },
+{ id: "n1", category: "Non Coffee", name: "Strawberry Milk", emoji: "🍓", desc: "Strawberry puree with cold milk.",          options: ONE_SIZE(79) },
   { id: "n2", category: "Non Coffee", name: "Matchaberry",     emoji: "🍵", desc: "Matcha meets strawberry. Sweet & earthy.",  options: ONE_SIZE(79) },
   { id: "n3", category: "Non Coffee", name: "Milky Matcha",    emoji: "🍵", desc: "Creamy matcha latte.",                      options: ONE_SIZE(79) },
 
-  // ---- FRAPPE (M 16oz / L 22oz) ----
-  // ⚠ Only "Cookies & Cream" was visible on the photo (the board is cut off). Add other frappes here.
-  { id: "p1", category: "Frappe", name: "Cookies & Cream", emoji: "🥤", desc: "Blended cookies & cream frappe.", options: ML(99, 119) },
+{ id: "p1", category: "Frappe", name: "Cookies & Cream", emoji: "🥤", desc: "Blended cookies & cream frappe.", options: ML(99, 119) },
 ];
 
 /* ---------------------------------------------------------
@@ -150,10 +138,10 @@ try { savedMenuSettings = JSON.parse(localStorage.getItem(MENU_SETTINGS_KEY) || 
 MENU.forEach((item) => { if (savedMenuSettings.items?.[item.id]) Object.assign(item, savedMenuSettings.items[item.id]); });
 
 const state = {
-  cart: {},               // { lineKey: { itemId, optKey, sugar, addons:[ids], qty } }
-  orders: [],             // orders currently loaded from Supabase
-  myTicketIds: loadMyIds(), // order ids placed on this device, shown automatically in Orders
-  nextTicketNumber: 1,    // shown on the hero banner; refreshed from the DB
+  cart: {},
+  orders: [],
+  myTicketIds: loadMyIds(),
+  nextTicketNumber: 1,
   activeCategory: "All",
   adminAuthed: false,
   adminStatusFilter: "All",
@@ -161,7 +149,10 @@ const state = {
   menuLoaded: false,
   unavailableAddons: new Set(Array.isArray(savedMenuSettings.unavailableAddons) ? savedMenuSettings.unavailableAddons : []),
   addonsLoaded: false,
-  custom: null,           // drink currently being customized
+  custom: null,
+  studentEmail: null,                        // school email gate (Feature 3, no verification)
+  soundEnabled: localStorage.getItem("sugarcrush_sound_enabled") === "1",  // Feature 1
+  unseenNew: 0,                             // new orders since staff last opened the queue
 };
 
 const money = (n) => "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -176,7 +167,7 @@ const el = (id) => {
   const found = document.getElementById(id);
   if (found) return found;
   missingEls.push(id);
-  return document.createElement("div"); // harmless stand-in so the rest of the page keeps working
+  return document.createElement("div");
 };
 
 const catbar = el("catbar");
@@ -202,15 +193,13 @@ function toast(msg) {
 /* ---------------------------------------------------------
    5. SUPABASE DATA LAYER
 --------------------------------------------------------- */
-
-// Convert a raw Supabase row into the shape the UI uses
 function mapRow(row) {
   return {
     id: row.id,
     ticketNumber: row.ticket_number,
     ticket: formatTicket(row.ticket_number),
-    studentName: row.student_name,       // customer name
-    studentSection: row.student_section, // grade & section
+    studentName: row.student_name,
+    studentSection: row.student_section,
     pickupTime: row.pickup_time,
     payment: row.payment_method,
     gcashRef: row.gcash_ref,
@@ -219,18 +208,16 @@ function mapRow(row) {
     total: Number(row.total),
     status: row.status,
     createdAt: row.created_at,
-    cancelledAt: row.cancelled_at,
-    studentEmail: row.student_email,
+    studentEmail: row.student_email,  // Feature 5: school email on the order
+    cancelledAt: row.cancelled_at,    // Feature 2: cancellation timestamp
   };
 }
 
-// STAFF ONLY: load every order. The database only returns rows to a signed-in staff account.
 async function fetchAllOrders() {
   const { data, error } = await supabaseClient
     .from("orders")
     .select("*")
     .order("created_at", { ascending: false });
-
   if (error) {
     console.error("Fetch orders failed:", error);
     return [];
@@ -238,7 +225,6 @@ async function fetchAllOrders() {
   return data.map(mapRow);
 }
 
-// Refresh the "next queue number" shown on the hero banner
 async function refreshHeroTicket() {
   const { data, error } = await supabaseClient.rpc("next_ticket_number");
   const nextNum = !error && data ? Number(data) : 1;
@@ -247,15 +233,7 @@ async function refreshHeroTicket() {
   if (ticketEl) ticketEl.textContent = formatTicket(nextNum);
 }
 
-// Place an order through the server function (it validates and recomputes the total).
-// Returns the saved order (with its DB-assigned ticket number) or null on failure.
 async function placeOrder(o) {
-  const verifiedStudent = await getVerifiedStudent();
-  if (!verifiedStudent) {
-    openStudentAuth();
-    toast("Sign in with your verified school email before placing an order.");
-    return null;
-  }
   const { data, error } = await supabaseClient.rpc("place_order", {
     p_name: o.name,
     p_section: o.section,
@@ -263,8 +241,8 @@ async function placeOrder(o) {
     p_payment: o.payment,
     p_gcash: o.gcash,
     p_items: o.items,
+    p_email: o.email,
   });
-
   if (error) {
     console.error("Place order failed:", error);
     alert("❌ Order not saved.\n\nReason: " + error.message);
@@ -274,58 +252,6 @@ async function placeOrder(o) {
   return row ? mapRow(row) : null;
 }
 
-function isOfficialSchoolEmail(email) {
-  return /^[^\s@]+@barcelonaacademy\.edu\.ph$/i.test(String(email || "").trim());
-}
-async function getVerifiedStudent() {
-  const { data, error } = await supabaseClient.auth.getUser();
-  const user = data?.user;
-  return !error && user && user.email_confirmed_at && isOfficialSchoolEmail(user.email) ? user : null;
-}
-
-const studentAuthOverlay = el("studentAuthOverlay");
-const studentAuthMessage = el("studentAuthMessage");
-function openStudentAuth() { studentAuthOverlay.hidden = false; studentAuthOverlay.classList.add("is-open"); }
-function closeStudentAuth() { studentAuthOverlay.classList.remove("is-open"); studentAuthOverlay.hidden = true; }
-async function refreshStudentAccount() {
-  const user = await getVerifiedStudent();
-  el("studentAccountBtn").textContent = user ? "School Account ✓" : "Student Sign In";
-  el("studentSignOutBtn").hidden = !user;
-  if (user) studentAuthMessage.textContent = `Verified: ${user.email}`;
-  return user;
-}
-el("studentAccountBtn").addEventListener("click", openStudentAuth);
-el("closeStudentAuthBtn").addEventListener("click", closeStudentAuth);
-el("studentAuthOverlay").addEventListener("click", (event) => { if (event.target === studentAuthOverlay) closeStudentAuth(); });
-el("studentAuthForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const email = el("studentAuthEmail").value.trim().toLowerCase();
-  const password = el("studentAuthPassword").value;
-  if (!isOfficialSchoolEmail(email)) { studentAuthMessage.textContent = "Use your @barcelonaacademy.edu.ph school email."; return; }
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) { studentAuthMessage.textContent = error.message; return; }
-  const user = await refreshStudentAccount();
-  if (!user) { studentAuthMessage.textContent = "Check your school inbox and verify your email, then sign in again."; await supabaseClient.auth.signOut(); return; }
-  studentAuthMessage.textContent = `Signed in as ${user.email}`;
-  closeStudentAuth();
-});
-el("studentSignUpBtn").addEventListener("click", async () => {
-  const email = el("studentAuthEmail").value.trim().toLowerCase();
-  const password = el("studentAuthPassword").value;
-  if (!isOfficialSchoolEmail(email)) { studentAuthMessage.textContent = "Use your @barcelonaacademy.edu.ph school email."; return; }
-  if (password.length < 8) { studentAuthMessage.textContent = "Choose a password with at least 8 characters."; return; }
-  const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: window.location.href.split("#")[0] } });
-  studentAuthMessage.textContent = error ? error.message : "Account created. Open the verification link sent to your school email, then sign in here.";
-});
-el("studentSignOutBtn").addEventListener("click", async () => {
-  const { error } = await supabaseClient.auth.signOut();
-  studentAuthMessage.textContent = error ? error.message : "Signed out.";
-  await refreshStudentAccount();
-});
-supabaseClient.auth.onAuthStateChange(() => { setTimeout(refreshStudentAccount, 0); });
-refreshStudentAccount();
-
-// STAFF ONLY: change an order. RLS silently ignores updates from non-staff, so we check a row came back.
 async function updateOrder(id, patch, what) {
   const { data, error } = await supabaseClient.from("orders").update(patch).eq("id", id).select("id");
   if (error || !data || data.length === 0) {
@@ -338,14 +264,12 @@ async function updateOrder(id, patch, what) {
 const updateOrderStatus = (id, status) => updateOrder(id, { status }, "status");
 const updateOrderPaid = (id, paid) => updateOrder(id, { paid }, "payment");
 
-// Customer: orders placed on this device
 async function fetchMyOrders(ids) {
   const { data, error } = await supabaseClient.rpc("get_orders_by_ids", { p_ids: ids });
   if (error) { console.error("Fetch my orders failed:", error); return []; }
   return (data || []).map(mapRow);
 }
 
-// Customer: look up one order by ticket number AND the name used on it
 async function findOrders(ticketText, name) {
   const digits = String(ticketText).replace(/[^0-9]/g, "");
   if (!digits || !name) return [];
@@ -354,13 +278,84 @@ async function findOrders(ticketText, name) {
   return (data || []).map(mapRow);
 }
 
-// Live updates for staff (the database only sends these to signed-in staff)
+/* ---------------------------------------------------------
+   5a. REAL-TIME NOTIFICATIONS + SOUND (Features 1, 2 & 5)
+--------------------------------------------------------- */
+const SEEN_KEY = "sugarcrush_seen_orders";
+let seenOrderIds = new Set();
+try { seenOrderIds = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch (e) {}
+function saveSeenIds() {
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seenOrderIds].slice(-200))); } catch (e) {}
+}
+const cancelNotified = new Set(); // one cancellation alert per order
+
+let audioCtx = null;
+function ensureAudio() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) { audioCtx = null; }
+  return audioCtx;
+}
+function chime(notes) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const t0 = ctx.currentTime;
+  notes.forEach(([freq, at, len]) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine"; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0 + at);
+    gain.gain.exponentialRampToValueAtTime(0.28, t0 + at + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + len);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0 + at); osc.stop(t0 + at + len + 0.05);
+  });
+}
+const playNewOrderChime = () => chime([[880, 0, 0.45], [1174.66, 0.15, 0.5]]);  // rising bell
+const playCancelChime  = () => chime([[659.25, 0, 0.4], [493.88, 0.15, 0.5]]); // falling
+
+// Unlock audio on the first tap/click if sounds are enabled (browser autoplay policy)
+document.addEventListener("pointerdown", () => { if (state.soundEnabled) ensureAudio(); }, { once: true });
+
+function updateNotifBadge() {
+  const badge = el("newOrderBadge");
+  const navBadge = el("navAdminBadge");
+  badge.hidden = state.unseenNew === 0;
+  badge.textContent = state.unseenNew;
+  badge.classList.toggle("is-pulse", state.unseenNew > 0);
+  navBadge.hidden = state.unseenNew === 0;
+  navBadge.textContent = state.unseenNew;
+}
+
+function handleNewOrder(row) {
+  if (!row || seenOrderIds.has(row.id)) return;   // no duplicate sounds per order
+  seenOrderIds.add(row.id); saveSeenIds();
+  if (!state.adminAuthed) return;                 // only staff get alerts
+  state.unseenNew += 1;
+  updateNotifBadge();
+  if (state.soundEnabled) playNewOrderChime();
+  toast(`🧋 New order ${formatTicket(row.ticket_number)} — ${row.student_name}`);
+  if (!views.admin.hidden) renderAdmin();
+}
+
+function handleOrderUpdate(_oldRow, newRow) {
+  if (newRow && newRow.status === "Cancelled" && !cancelNotified.has(newRow.id)) {
+    cancelNotified.add(newRow.id);
+    if (state.adminAuthed) {
+      toast(`❌ ${formatTicket(newRow.ticket_number)} was CANCELLED by ${newRow.student_name}.`);
+      if (state.soundEnabled) playCancelChime();
+    }
+    if (!views.tracker.hidden) renderTracker(true);
+  }
+}
+
 supabaseClient
   .channel("orders-changes")
-  .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+  .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (p) => handleNewOrder(p.new))
+  .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (p) => {
+    handleOrderUpdate(p.old, p.new);
     refreshHeroTicket();
-    if (state.adminAuthed && payload.eventType === "INSERT") notifyStaffOrder(payload.new?.id, "New order received");
-    if (state.adminAuthed && payload.eventType === "UPDATE" && payload.new?.status === "Cancelled" && payload.old?.status !== "Cancelled") notifyStaffOrder(payload.new?.id, "An order was cancelled");
     if (state.adminAuthed && !views.admin.hidden) renderAdmin();
   })
   .subscribe();
@@ -373,6 +368,88 @@ setInterval(() => {
 }, 15000);
 
 /* ---------------------------------------------------------
+   5b. STUDENT SCHOOL EMAIL — domain gate only (Feature 3)
+--------------------------------------------------------- */
+const SCHOOL_DOMAIN = "barcelonaacademy.edu.ph";
+const STUDENT_EMAIL_KEY = "sugarcrush_student_email";
+const emailOverlay = el("emailOverlay");
+
+function validSchoolEmail(email) {
+  return new RegExp("^[a-z0-9._%+-]+@" + SCHOOL_DOMAIN.replace(/\./g, "\\.") + "$", "i").test(String(email).trim());
+}
+function updateAuthChip() {
+  const chip = el("authChip");
+  if (state.studentEmail) { chip.textContent = state.studentEmail; chip.classList.add("is-in"); chip.title = "School email — click to change"; }
+  else { chip.textContent = "Sign in"; chip.classList.remove("is-in"); chip.title = "Enter your school email"; }
+}
+function loadStoredEmail() {
+  try { state.studentEmail = localStorage.getItem(STUDENT_EMAIL_KEY) || null; } catch (e) { state.studentEmail = null; }
+}
+function openEmailModal() {
+  if (state.studentEmail) el("studentEmailInput").value = state.studentEmail;
+  emailOverlay.classList.add("is-open");
+  el("studentEmailInput").focus();
+}
+el("closeEmail").addEventListener("click", () => emailOverlay.classList.remove("is-open"));
+el("authChip").addEventListener("click", () => {
+  if (state.studentEmail && !confirm(`Change your school email (${state.studentEmail})?`)) return;
+  openEmailModal();
+});
+function saveStudentEmail() {
+  const email = el("studentEmailInput").value.trim().toLowerCase();
+  if (!validSchoolEmail(email)) { toast("Please use your official school email (name@" + SCHOOL_DOMAIN + ")."); return; }
+  state.studentEmail = email;
+  try { localStorage.setItem(STUDENT_EMAIL_KEY, email); } catch (e) { /* private mode: keep in memory */ }
+  updateAuthChip();
+  emailOverlay.classList.remove("is-open");
+  toast("School email saved: " + email + " 🎉");
+}
+el("saveEmailBtn").addEventListener("click", saveStudentEmail);
+el("studentEmailInput").addEventListener("keydown", (e) => { if (e.key === "Enter") saveStudentEmail(); });
+
+/* ---------------------------------------------------------
+   5c. WELCOME / INSTRUCTIONS MODAL (Feature 4)
+--------------------------------------------------------- */
+const INSTRUCTIONS_KEY = "sugarcrush_instructions_seen";
+const welcomeOverlay = el("welcomeOverlay");
+function openWelcome() { welcomeOverlay.classList.add("is-open"); }
+function closeWelcome() {
+  welcomeOverlay.classList.remove("is-open");
+  try { sessionStorage.setItem(INSTRUCTIONS_KEY, "1"); } catch (e) {}
+}
+el("welcomeContinueBtn").addEventListener("click", closeWelcome);
+el("helpBtn").addEventListener("click", openWelcome);
+
+/* ---------------------------------------------------------
+   5d. ORDER CANCELLATION (Feature 2)
+--------------------------------------------------------- */
+const cancelOverlay = el("cancelOverlay");
+let cancelTarget = null;
+function confirmCancelOrder(o) {
+  if (!state.studentEmail) { toast("Enter your school email first."); openEmailModal(); return; }
+  cancelTarget = o;
+  el("cancelOrderSummary").innerHTML = `
+    <div class="row"><span>Ticket</span><b>${o.ticket}</b></div>
+    <div class="row"><span>Items</span><b>${o.items.map((i) => esc(i.qty + "× " + i.name)).join("<br>")}</b></div>
+    <div class="row"><span>Total</span><b>${money(o.total)}</b></div>`;
+  cancelOverlay.classList.add("is-open");
+}
+el("cancelGoBackBtn").addEventListener("click", () => cancelOverlay.classList.remove("is-open"));
+el("closeCancelModal").addEventListener("click", () => cancelOverlay.classList.remove("is-open"));
+el("confirmCancelBtn").addEventListener("click", async () => {
+  if (!cancelTarget) return;
+  const btn = el("confirmCancelBtn");
+  btn.disabled = true; btn.textContent = "Cancelling…";
+  const { error } = await supabaseClient.rpc("cancel_order", { p_order_id: cancelTarget.id, p_email: state.studentEmail });
+  btn.disabled = false; btn.textContent = "Confirm Cancellation";
+  if (error) { toast("Could not cancel: " + error.message); return; }  // DB enforces the rules
+  cancelOverlay.classList.remove("is-open");
+  cancelTarget = null;
+  toast("Your order was cancelled. Staff have been notified.");
+  renderTracker(true);
+});
+
+/* ---------------------------------------------------------
    6. VIEW SWITCHING
 --------------------------------------------------------- */
 function showView(name) {
@@ -380,6 +457,7 @@ function showView(name) {
     views[k].hidden = k !== name;
     navBtns[k].classList.toggle("is-active", k === name);
   });
+  if (name === "admin") { state.unseenNew = 0; updateNotifBadge(); }
   if (name === "tracker") renderTracker();
   if (name === "admin") renderAdmin();
 }
@@ -420,7 +498,7 @@ function renderMenu() {
       grouped[m.category].push(m);
     });
 
-  Object.entries(grouped).forEach(([cat, items]) => {
+Object.entries(grouped).forEach(([cat, items]) => {
     const heading = document.createElement("div");
     heading.className = "menuCategory";
     const note = CATEGORY_NOTES[cat] || (items[0].options.length > 1 ? "Medium 16oz · Large 22oz" : "");
@@ -437,15 +515,15 @@ function buildDrinkCard(item) {
   const card = document.createElement("article");
   card.className = "foodCard" + (inCart ? " is-inCart" : "");
 
-  const prices = item.options.length > 1
+const prices = item.options.length > 1
     ? item.options.map((o) => `<span class="priceTag"><small>${esc(o.short)}</small>${money(o.price).replace(".00", "")}</span>`).join("")
     : `<span class="priceTag">${money(item.options[0].price).replace(".00", "")}</span>`;
 
-  card.innerHTML = `
+card.innerHTML = `
     ${inCart ? `<span class="inCartBadge">${inCart} in tray</span>` : ""}
     ${unavailable ? `<span class="unavailableBadge">Unavailable</span>` : ""}
     <div class="foodCard__top">
-      <div class="foodCard__emoji">${item.emoji}</div>
+      <div class="foodCard__emoji">${esc(item.emoji)}</div>
       <div>
         <div class="foodCard__name">${esc(item.name)}</div>
         <div class="foodCard__desc">${esc(item.desc)}</div>
@@ -461,17 +539,14 @@ function buildDrinkCard(item) {
 }
 
 /* ---------------------------------------------------------
-   8. CART  (each unique drink + size + sweetness + add-ons is one line)
-   Notes: the order is saved to the existing `orders` table. Each
-   cart line is stored in `items` as { name, qty, price } where 
-ame`
+   8. CART
+   Each cart line is stored in `items` as { name, qty, price } where `name`
    carries the size / sweetness / add-ons, e.g.
    "Wintermelon (L, 50% sugar, +Tapioca Pearls)" and `price` is the
    per-cup price including add-ons.
 --------------------------------------------------------- */
 const lineKeyOf = (l) => [l.itemId, l.optKey, l.sugar, [...l.addons].sort().join("+")].join("|");
 
-// Total cups of one menu item currently in the cart (all sizes / variants)
 function itemQty(itemId) {
   return Object.values(state.cart).filter((l) => l.itemId === itemId).reduce((s, l) => s + l.qty, 0);
 }
@@ -480,19 +555,18 @@ function addonsFor(item) {
   return ADDONS.filter((a) => !state.unavailableAddons.has(a.id) && (!a.only || a.only.includes(item.category)));
 }
 
-// Expand a stored cart line into everything the UI needs
 function describeLine(key, l) {
   const item = findItem(l.itemId);
   const opt = item.options.find((o) => o.key === l.optKey);
   const addons = l.addons.map((id) => ADDONS.find((a) => a.id === id));
   const unit = opt.price + addons.reduce((s, a) => s + a.price, 0);
 
-  const parts = [];
+const parts = [];
   if (item.options.length > 1) parts.push(opt.short);
   parts.push(l.sugar + "% sugar");
   addons.forEach((a) => parts.push("+" + a.name));
 
-  return {
+return {
     key,
     itemId: l.itemId,
     qty: l.qty,
@@ -512,7 +586,6 @@ function cartTotal() {
   return cartLines().reduce((sum, l) => sum + l.lineTotal, 0);
 }
 
-// Add cups to the cart; returns how many were actually added (respects the per-item limit)
 function addToCart(line, qty) {
   const room = MAX_QTY_PER_ITEM - itemQty(line.itemId);
   const add = Math.min(qty, Math.max(0, room));
@@ -538,18 +611,18 @@ function setLineQty(key, wanted) {
   if (next <= 0) delete state.cart[key];
   else l.qty = next;
   renderMenu();
-renderCart();
+  renderCart();
 }
 
 function renderCart() {
   const lines = cartLines();
   cartCountEl.textContent = lines.reduce((s, l) => s + l.qty, 0);
 
-  cartItemsEl.innerHTML = "";
+cartItemsEl.innerHTML = "";
   cartEmptyEl.hidden = lines.length > 0;
   checkoutBtn.disabled = lines.length === 0;
 
-  lines.forEach((l) => {
+lines.forEach((l) => {
     const room = MAX_QTY_PER_ITEM - itemQty(l.itemId);
     const row = document.createElement("div");
     row.className = "cartItem";
@@ -576,7 +649,7 @@ function renderCart() {
     cartItemsEl.appendChild(row);
   });
 
-  cartTotalEl.textContent = money(cartTotal());
+cartTotalEl.textContent = money(cartTotal());
 }
 
 const overlay = el("overlay");
@@ -588,7 +661,7 @@ el("closeCart").addEventListener("click", closeCart);
 overlay.addEventListener("click", () => { closeCart(); closeAllModals(); });
 
 /* ---------------------------------------------------------
-   9. CUSTOMIZE-A-DRINK SHEET (size, sweetness, add-ons, quantity)
+   9. CUSTOMIZE-A-DRINK SHEET
 --------------------------------------------------------- */
 const customOverlay = el("customOverlay");
 const customBody = el("customBody");
@@ -623,7 +696,7 @@ function renderCustomize() {
   const c = state.custom, item = findItem(c.itemId), room = customRoom();
   c.qty = Math.min(Math.max(1, c.qty), room);
 
-  const sizeGroup = item.options.length > 1 ? `
+const sizeGroup = item.options.length > 1 ? `
     <div class="custom__group">
       <h4>Size</h4>
       <div class="chipRow">
@@ -634,7 +707,7 @@ function renderCustomize() {
       </div>
     </div>` : "";
 
-  const addons = addonsFor(item);
+const addons = addonsFor(item);
   const addonGroup = addons.length ? `
     <div class="custom__group">
       <h4>Add-ons <small>optional</small></h4>
@@ -646,9 +719,9 @@ function renderCustomize() {
       </div>
     </div>` : "";
 
-  customBody.innerHTML = `
+customBody.innerHTML = `
     <div class="custom__top">
-      <div class="foodCard__emoji">${item.emoji}</div>
+      <div class="foodCard__emoji">${esc(item.emoji)}</div>
       <div>
         <div class="custom__title">${esc(item.name)}</div>
         <div class="custom__desc">${esc(item.desc)}</div>
@@ -678,7 +751,7 @@ function renderCustomize() {
     </button>
   `;
 
-  customBody.querySelectorAll("[data-opt]").forEach((b) => b.addEventListener("click", () => { c.optKey = b.dataset.opt; renderCustomize(); }));
+customBody.querySelectorAll("[data-opt]").forEach((b) => b.addEventListener("click", () => { c.optKey = b.dataset.opt; renderCustomize(); }));
   customBody.querySelectorAll("[data-sugar]").forEach((b) => b.addEventListener("click", () => { c.sugar = Number(b.dataset.sugar); renderCustomize(); }));
   customBody.querySelectorAll("[data-addon]").forEach((b) => b.addEventListener("click", () => {
     const id = b.dataset.addon;
@@ -686,7 +759,7 @@ function renderCustomize() {
     renderCustomize();
   }));
 
-  const qtyInput = el("customQty");
+const qtyInput = el("customQty");
   const clampQty = (v) => {
     let n = Math.floor(Number(v));
     if (!Number.isFinite(n) || n < 1) n = 1;
@@ -704,13 +777,13 @@ function renderCustomize() {
   });
   qtyInput.addEventListener("change", () => { c.qty = clampQty(qtyInput.value); qtyInput.value = c.qty; updateCustomTotals(); });
 
-  el("customAddBtn").addEventListener("click", () => {
+el("customAddBtn").addEventListener("click", () => {
     c.qty = clampQty(qtyInput.value);
     const added = addToCart({ itemId: c.itemId, optKey: c.optKey, sugar: c.sugar, addons: c.addons, qty: c.qty }, c.qty);
     if (!added) return;
     closeCustomize();
     renderMenu();
-renderCart();
+    renderCart();
     if (added === c.qty) toast(`${added} × ${item.name} added to your tray 🧋`);
   });
 }
@@ -722,7 +795,6 @@ const checkoutOverlay = el("checkoutOverlay");
 const checkoutForm = el("checkoutForm");
 const gcashBox = el("gcashBox");
 
-// "13:05" -> "1:05 PM"
 function formatTime12(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
@@ -730,11 +802,12 @@ function formatTime12(hhmm) {
 
 function openCheckout() {
   if (cartLines().length === 0) return;
+  if (!state.studentEmail) { toast("Please enter your school email first."); openEmailModal(); return; }
   closeCart();
   const pt = el("pickupTime");
   pt.min = PICKUP_OPEN;
   pt.max = PICKUP_CLOSE;
-  document.querySelector(".field__hint").textContent = `Pickup hours: ${formatTime12(PICKUP_OPEN)} – ${formatTime12(PICKUP_CLOSE)}`;
+  el("pickupHint").textContent = `Pickup hours: ${formatTime12(PICKUP_OPEN)} – ${formatTime12(PICKUP_CLOSE)}`;
   renderCheckoutSummary();
   checkoutOverlay.classList.add("is-open");
 }
@@ -742,7 +815,6 @@ function closeCheckout() { checkoutOverlay.classList.remove("is-open"); }
 checkoutBtn.addEventListener("click", openCheckout);
 el("closeCheckout").addEventListener("click", closeCheckout);
 
-// GCash number: digits only, max 11
 el("gcashRef").addEventListener("input", (e) => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0, 11);
   e.target.style.borderColor = "";
@@ -763,62 +835,64 @@ checkoutForm.addEventListener("submit", async (e) => {
   const payment = document.querySelector('input[name="payment"]:checked').value;
   const gcashRef = el("gcashRef").value.trim();
 
-  if (payment === "gcash" && !/^\d{11}$/.test(gcashRef)) {
+if (!state.studentEmail) { toast("Please enter your school email first."); openEmailModal(); return; }
+  if (!validSchoolEmail(state.studentEmail)) { toast("Please use your official school email (name@" + SCHOOL_DOMAIN + ")."); openEmailModal(); return; }
+
+if (payment === "gcash" && !/^\d{11}$/.test(gcashRef)) {
     el("gcashRef").focus();
     el("gcashRef").style.borderColor = "var(--pink)";
     toast("GCash number must be exactly 11 digits.");
     return;
   }
 
-  // Pickup time must be typed in and fall inside pickup hours
-  const pickupRaw = el("pickupTime").value;
+const pickupRaw = el("pickupTime").value;
   if (!pickupRaw || pickupRaw < PICKUP_OPEN || pickupRaw > PICKUP_CLOSE) {
     el("pickupTime").focus();
     toast(`Pickup time must be between ${formatTime12(PICKUP_OPEN)} and ${formatTime12(PICKUP_CLOSE)}.`);
     return;
   }
 
-  const unavailableAddonInCart = ADDONS.find((a) => state.unavailableAddons.has(a.id) && Object.values(state.cart).some((line) => line.addons.includes(a.id)));
+const unavailableAddonInCart = ADDONS.find((a) => state.unavailableAddons.has(a.id) && Object.values(state.cart).some((line) => line.addons.includes(a.id)));
   if (unavailableAddonInCart) { toast(`${unavailableAddonInCart.name} is unavailable. Remove the affected item from your tray to continue.`); return; }
 
-  const unavailableInCart = MENU.find((m) => state.unavailableItems.has(m.id) && itemQty(m.id) > 0);
+const unavailableInCart = MENU.find((m) => state.unavailableItems.has(m.id) && itemQty(m.id) > 0);
   if (unavailableInCart) { toast(`${unavailableInCart.name} is unavailable. Remove it from your tray to continue.`); return; }
 
-  // Safety net: never let an item go past the per-order limit
-  const overLimit = MENU.find((m) => itemQty(m.id) > MAX_QTY_PER_ITEM);
+const overLimit = MENU.find((m) => itemQty(m.id) > MAX_QTY_PER_ITEM);
   if (overLimit) { toast(`${overLimit.name}: max ${MAX_QTY_PER_ITEM} per order.`); return; }
 
-  const customerName = el("studentName").value.trim();
+const customerName = el("studentName").value.trim();
   const customerSection = el("studentSection").value.trim();
   const pickupTime = formatTime12(pickupRaw);
   const lines = cartLines();
 
-  const orderArgs = {
+const orderArgs = {
     name: customerName,
     section: customerSection,
     pickup: pickupTime,
     payment,
+    email: state.studentEmail,          // school email gate (Feature 3)
     gcash: payment === "gcash" ? gcashRef : null,
     items: lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price })),
   };
 
-  const submitBtn = checkoutForm.querySelector('button[type="submit"]');
+const submitBtn = checkoutForm.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.textContent = "Placing order…";
 
-  const savedOrder = await placeOrder(orderArgs);
+const savedOrder = await placeOrder(orderArgs);
 
-  submitBtn.disabled = false;
+submitBtn.disabled = false;
   submitBtn.textContent = "Place Order";
 
-  if (!savedOrder) return; // placeOrder already alerted the specific error
+if (!savedOrder) return;
 
-  state.myTicketIds.push(savedOrder.id);
+state.myTicketIds.push(savedOrder.id);
   saveMyIds();
   state.cart = {};
 
-  renderMenu();
-renderCart();
+renderMenu();
+  renderCart();
   await refreshHeroTicket();
   closeCheckout();
   checkoutForm.reset();
@@ -837,6 +911,7 @@ function showConfirmation(order) {
   el("confirmDetails").innerHTML = `
     <div class="row"><span>Name</span><b>${esc(order.studentName)}</b></div>
     <div class="row"><span>Section</span><b>${esc(order.studentSection)}</b></div>
+    <div class="row"><span>Email</span><b>${esc(order.studentEmail || "")}</b></div>
     <div class="row"><span>Pickup</span><b>${esc(order.pickupTime)}</b></div>
     <div class="row"><span>Items</span><b>${itemsList}</b></div>
     <div class="row"><span>Payment</span><b>${order.payment === "gcash" ? "GCash (pending verification)" : "Cash on pickup"}</b></div>
@@ -853,8 +928,11 @@ function closeAllModals() {
   checkoutOverlay.classList.remove("is-open");
   confirmOverlay.classList.remove("is-open");
   closeCustomize();
+  emailOverlay.classList.remove("is-open");
+  cancelOverlay.classList.remove("is-open");
+  if (welcomeOverlay.classList.contains("is-open")) closeWelcome();
 }
-[checkoutOverlay, confirmOverlay, customOverlay].forEach((ov) => {
+[checkoutOverlay, confirmOverlay, customOverlay, emailOverlay, cancelOverlay, welcomeOverlay].forEach((ov) => {
   ov.addEventListener("click", (e) => { if (e.target === ov) closeAllModals(); });
 });
 
@@ -865,10 +943,10 @@ async function renderTracker(silent) {
   const list = el("trackerList");
   if (!silent) list.innerHTML = `<p class="trackerEmpty">Loading…</p>`;
 
-  let mine = [];
+let mine = [];
   if (state.myTicketIds.length) mine = await fetchMyOrders(state.myTicketIds);
 
-  list.innerHTML = "";
+list.innerHTML = "";
   if (mine.length === 0) {
     list.innerHTML = `<p class="trackerEmpty">No orders on this device yet. Place an order, or look one up above with its ticket number and name.</p>`;
     return;
@@ -888,7 +966,7 @@ async function runTrackerSearch() {
   if (!ticket && !name) { renderTracker(); return; }
   if (!ticket || !name) { toast("Enter both your ticket number and the name used on the order."); return; }
 
-  list.innerHTML = `<p class="trackerEmpty">Searching…</p>`;
+list.innerHTML = `<p class="trackerEmpty">Searching…</p>`;
   const results = await findOrders(ticket, name);
   list.innerHTML = "";
   if (results.length === 0) {
@@ -899,25 +977,33 @@ async function runTrackerSearch() {
 }
 
 function statusBadgeClass(status) {
-  return { Pending: "badge--pending", Confirmed: "badge--pending", Preparing: "badge--preparing", Ready: "badge--ready", Completed: "badge--completed", Cancelled: "badge--cancelled" }[status] || "badge--completed";
+  return {
+    Pending: "badge--pending",
+    Confirmed: "badge--confirmed",
+    Preparing: "badge--preparing",
+    Ready: "badge--ready",
+    Completed: "badge--completed",
+    Cancelled: "badge--cancelled",
+  }[status] || "badge--completed";
 }
 
 function buildOrderCard(o, isAdmin) {
   const card = document.createElement("div");
-  card.className = "orderCard";
+  card.className = "orderCard" + (o.status === "Cancelled" ? " orderCard--cancelled" : "");
   const itemsText = o.items.map((i) => `${i.qty}× ${esc(i.name)}`).join("<br>");
+  const when = (t) => t ? new Date(t).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
   const payBadge = o.payment === "gcash"
-    ? `<span class="badge ${o.paid ? "badge--paid" : "badge--unpaid"}">${o.paid ? "GCash Verified" : "GCash Ref " + esc(o.gcashRef)}</span>`
+    ? `<span class="badge ${o.paid ? "badge--paid" : "badge--unpaid"}">${o.paid ? "GCash Verified" : "GCash ••• " + esc(String(o.gcashRef || "").slice(-4))}</span>`
     : `<span class="badge badge--unpaid">Cash on Pickup</span>`;
 
-  card.innerHTML = `
+card.innerHTML = `
     <div class="orderCard__head">
       <div>
         <div class="orderCard__num">${o.ticket}</div>
         <div class="orderCard__meta">${esc(o.studentName)} · ${esc(o.studentSection)} · ${esc(o.pickupTime)}</div>
-        ${o.createdAt ? `<div class="orderCard__meta">Submitted: ${esc(new Date(o.createdAt).toLocaleString())}</div>` : ""}
-        ${isAdmin && o.studentEmail ? `<div class="orderCard__meta">${esc(o.studentEmail)}</div>` : ""}
-        ${o.cancelledAt ? `<div class="orderCard__meta">Cancelled: ${esc(new Date(o.cancelledAt).toLocaleString())}</div>` : ""}
+        ${o.studentEmail ? `<div class="orderCard__email">✉️ ${esc(o.studentEmail)}</div>` : ""}
+        ${o.createdAt ? `<div class="orderCard__meta">Placed ${esc(when(o.createdAt))}</div>` : ""}
+        ${o.cancelledAt ? `<div class="orderCard__meta orderCard__cancelTime">Cancelled ${esc(when(o.cancelledAt))}</div>` : ""}
       </div>
       <span class="badge ${statusBadgeClass(o.status)}">${esc(o.status)}</span>
     </div>
@@ -928,14 +1014,22 @@ function buildOrderCard(o, isAdmin) {
     </div>
   `;
 
-  if (isAdmin && o.status !== "Cancelled") {
+// Student side: cancel while staff haven't started preparing (Feature 2)
+  if (!isAdmin && (o.status === "Pending" || o.status === "Confirmed")) {
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "smallBtn smallBtn--cancel";
+    cancelBtn.textContent = "Cancel order";
+    cancelBtn.addEventListener("click", () => confirmCancelOrder(o));
+    card.querySelector(".orderCard__foot").appendChild(cancelBtn);
+  }
+
+if (isAdmin) {
     const actions = document.createElement("div");
     actions.className = "adminOrder__actions";
-
-    const flow = ["Pending", "Preparing", "Ready", "Completed"];
+    const flow = ["Pending", "Confirmed", "Preparing", "Ready", "Completed"];
     const idx = flow.indexOf(o.status);
 
-    if (idx < flow.length - 1) {
+if (idx >= 0 && idx < flow.length - 1) {
       const nextBtn = document.createElement("button");
       nextBtn.className = "smallBtn smallBtn--primary";
       nextBtn.textContent = "Mark as " + flow[idx + 1];
@@ -949,7 +1043,15 @@ function buildOrderCard(o, isAdmin) {
       backBtn.addEventListener("click", async () => { await updateOrderStatus(o.id, flow[idx - 1]); renderAdmin(); });
       actions.appendChild(backBtn);
     }
-    if (o.payment === "gcash" && !o.paid) {
+    if (o.status === "Cancelled") {
+      // Cancelled orders cannot be prepared — only an authorized staff restore brings them back.
+      const restoreBtn = document.createElement("button");
+      restoreBtn.className = "smallBtn smallBtn--revert";
+      restoreBtn.textContent = "↩ Restore to Pending (staff override)";
+      restoreBtn.addEventListener("click", async () => { await updateOrderStatus(o.id, "Pending"); renderAdmin(); });
+      actions.appendChild(restoreBtn);
+    }
+    if (o.payment === "gcash" && !o.paid && o.status !== "Cancelled") {
       const payBtn = document.createElement("button");
       payBtn.className = "smallBtn";
       payBtn.textContent = "Confirm GCash Payment";
@@ -959,28 +1061,12 @@ function buildOrderCard(o, isAdmin) {
     card.appendChild(actions);
   }
 
-  if (!isAdmin && ["Pending", "Confirmed"].includes(o.status)) {
-    const cancel = document.createElement("button");
-    cancel.className = "smallBtn";
-    cancel.textContent = "Cancel Order";
-    cancel.addEventListener("click", async () => {
-      if (!window.confirm("Are you sure you want to cancel this order?")) return;
-      cancel.disabled = true;
-      const { error } = await supabaseClient.rpc("cancel_order", { p_order_id: o.id });
-      if (error) { cancel.disabled = false; toast("This order could not be cancelled. It may already be in preparation."); console.error("Cancel order failed:", error); return; }
-      toast("Order cancelled.");
-      renderTracker();
-    });
-    card.appendChild(cancel);
-  }
-
-  return card;
+return card;
 }
 
 /* ---------------------------------------------------------
    13. ADMIN VIEW
 --------------------------------------------------------- */
-// Is the signed-in account on the staff list? (checked by the database, not the browser)
 async function checkStaff() {
   const { data, error } = await supabaseClient.rpc("is_staff");
   return !error && data === true;
@@ -994,23 +1080,23 @@ async function tryAdminLogin() {
   const err = el("adminError");
   if (!password) { err.textContent = "Enter the staff password."; err.hidden = false; return; }
 
-  const btn = el("adminLoginBtn");
+const btn = el("adminLoginBtn");
   btn.disabled = true;
   btn.textContent = "Signing in…";
 
-  let ok = false;
+let ok = false;
   let msg = "Incorrect password.";
-  const { error } = await supabaseClient.auth.signInWithPassword({ email: "staff@example.com", password }) // fixed internal staff login;
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: "staff@example.com", password });
   if (!error) {
     ok = await checkStaff();
     if (!ok) { msg = "This account is not on the staff list."; await supabaseClient.auth.signOut(); }
   }
 
-  btn.disabled = false;
+btn.disabled = false;
   btn.textContent = "Sign In";
   if (!ok) { err.textContent = msg; err.hidden = false; return; }
 
-  state.adminAuthed = true;
+state.adminAuthed = true;
   err.hidden = true;
   el("adminPass").value = "";
   renderAdmin();
@@ -1025,16 +1111,30 @@ el("adminLogoutBtn").addEventListener("click", async () => {
 // Keep staff signed in across page reloads; sign out cleanly if the session ends
 supabaseClient.auth.onAuthStateChange((event) => {
   if (event === "SIGNED_OUT") {
-    setTimeout(() => { state.adminAuthed = false; if (!views.admin.hidden) renderAdmin(); }, 0);
+    state.adminAuthed = false;
+    setTimeout(() => { if (!views.admin.hidden) renderAdmin(); }, 0);
   }
 });
 (async () => {
+  loadStoredEmail();
+  updateAuthChip();
   const { data } = await supabaseClient.auth.getSession();
   if (data && data.session && (await checkStaff())) {
     state.adminAuthed = true;
     if (!views.admin.hidden) renderAdmin();
   }
 })();
+
+// Sound on/off toggle (Feature 1)
+function updateSoundToggle() {
+  el("soundToggle").textContent = state.soundEnabled ? "🔔 Sound: On" : "🔕 Sound: Off";
+}
+el("soundToggle").addEventListener("click", () => {
+  state.soundEnabled = !state.soundEnabled;
+  try { localStorage.setItem("sugarcrush_sound_enabled", state.soundEnabled ? "1" : "0"); } catch (e) {}
+  updateSoundToggle();
+  if (state.soundEnabled) playNewOrderChime();   // user gesture unlocks audio + confirms it works
+});
 
 el("adminSearch").addEventListener("input", renderAdminOrderList);
 
@@ -1061,7 +1161,7 @@ async function loadSharedMenu(seedIfEmpty = false) {
     applySharedMenuRows(initial);
   } else if (data.length) applySharedMenuRows(data);
 
-  return true;
+return true;
 }
 async function loadSharedAddons(seedIfEmpty = false) {
   const { data, error } = await supabaseClient.from("menu_addons").select("id,available");
@@ -1141,30 +1241,34 @@ async function renderAdmin() {
   el("adminLogin").hidden = state.adminAuthed;
   el("adminDash").hidden = !state.adminAuthed;
   if (!state.adminAuthed) return;
-  ensureNotificationControls();
 
-  el("adminDate").textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+el("adminDate").textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-  if (!state.menuLoaded) await loadSharedMenu(true);
+if (!state.menuLoaded) await loadSharedMenu(true);
   if (!state.addonsLoaded) await loadSharedAddons(true);
   renderMenuEditor();
   renderAddonAvailability();
   el("orderList").innerHTML = `<p class="trackerEmpty">Loading orders…</p>`;
   state.orders = await fetchAllOrders();
 
-  renderAdminStats();
+// Mark loaded orders as seen so a refreshed dashboard never replays old sounds
+  state.orders.forEach((o) => seenOrderIds.add(o.id));
+  saveSeenIds();
+
+renderAdminStats();
   renderAdminTabs();
   renderAdminOrderList();
 }
 
 function renderAdminStats() {
-  const today = state.orders;
-  const totalSales = today.reduce((s, o) => s + o.total, 0);
-  const pending = today.filter((o) => o.status === "Pending").length;
-  const ready = today.filter((o) => o.status === "Ready").length;
+  const all = state.orders;
+  const active = all.filter((o) => o.status !== "Cancelled");
+  const totalSales = active.reduce((s, o) => s + o.total, 0);
+  const pending = all.filter((o) => o.status === "Pending" || o.status === "Confirmed").length;
+  const ready = all.filter((o) => o.status === "Ready").length;
 
-  el("statRow").innerHTML = `
-    <div class="statCard"><strong>${today.length}</strong><span>TOTAL ORDERS</span></div>
+el("statRow").innerHTML = `
+    <div class="statCard"><strong>${all.length}</strong><span>TOTAL ORDERS</span></div>
     <div class="statCard"><strong>${money(totalSales)}</strong><span>TOTAL SALES</span></div>
     <div class="statCard"><strong>${pending}</strong><span>PENDING</span></div>
     <div class="statCard"><strong>${ready}</strong><span>READY FOR PICKUP</span></div>
@@ -1172,7 +1276,7 @@ function renderAdminStats() {
 }
 
 function renderAdminTabs() {
-  const tabs = ["All", "Pending", "Preparing", "Ready", "Completed"];
+  const tabs = ["All", "Pending", "Confirmed", "Preparing", "Ready", "Completed", "Cancelled"];
   const bar = el("statusTabs");
   bar.innerHTML = "";
   tabs.forEach((t) => {
@@ -1189,13 +1293,13 @@ function renderAdminOrderList() {
   const list = el("orderList");
   list.innerHTML = "";
 
-  const filtered = state.orders.filter((o) => {
+const filtered = state.orders.filter((o) => {
     const statusOk = state.adminStatusFilter === "All" || o.status === state.adminStatusFilter;
-    const searchOk = !q || o.ticket.toLowerCase().includes(q) || (o.studentName || "").toLowerCase().includes(q);
+    const searchOk = !q || o.ticket.toLowerCase().includes(q) || (o.studentName || "").toLowerCase().includes(q) || (o.studentEmail || "").toLowerCase().includes(q);
     return statusOk && searchOk;
   });
 
-  if (filtered.length === 0) {
+if (filtered.length === 0) {
     list.innerHTML = `<p class="trackerEmpty">No orders match here yet.</p>`;
     return;
   }
@@ -1214,51 +1318,9 @@ subscribeSharedAddons();
 renderCart();
 refreshHeroTicket();
 showView("student");
-
-// Welcome instructions appear once per browser session and can be reopened from Help.
-const welcomeOverlay = el("welcomeOverlay");
-function openWelcome() { welcomeOverlay.hidden = false; welcomeOverlay.classList.add("is-open"); }
-function closeWelcome() { welcomeOverlay.classList.remove("is-open"); welcomeOverlay.hidden = true; sessionStorage.setItem("sugarcrush_welcome_seen", "1"); }
-el("helpInstructionsBtn").addEventListener("click", openWelcome);
-el("dismissWelcomeBtn").addEventListener("click", closeWelcome);
-if (!sessionStorage.getItem("sugarcrush_welcome_seen")) openWelcome();
-
-// The stream callback only fires for events received after subscription, so refreshes do not replay old orders.
-const notifiedOrderIds = new Set();
-let notificationCount = 0;
-let notificationSoundEnabled = false;
-function notifyStaffOrder(id, message) {
-  const notificationKey = `${id || "unknown"}:${message}`;
-  if (notifiedOrderIds.has(notificationKey)) return;
-  notifiedOrderIds.add(notificationKey);
-  notificationCount++;
-  const badge = document.getElementById("newOrderBadge");
-  if (badge) { badge.textContent = String(notificationCount); badge.hidden = false; }
-  toast(message);
-  if (notificationSoundEnabled) {
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new Ctx();
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      oscillator.frequency.value = 880; gain.gain.value = 0.08;
-      oscillator.connect(gain); gain.connect(ctx.destination);
-      oscillator.start(); oscillator.stop(ctx.currentTime + 0.16);
-      oscillator.onended = () => ctx.close();
-    } catch (e) { console.warn("Notification sound unavailable:", e); }
-  }
-}
-function ensureNotificationControls() {
-  const dash = el("adminDash");
-  if (document.getElementById("notificationControls") || !dash) return;
-  const row = document.createElement("div"); row.id = "notificationControls"; row.className = "adminControls";
-  row.innerHTML = '<button class="smallBtn" id="soundToggleBtn" type="button">Enable Notification Sound</button><span class="badge badge--pending" id="newOrderBadge" hidden>0</span>';
-  dash.prepend(row);
-  document.getElementById("soundToggleBtn").addEventListener("click", (event) => {
-    notificationSoundEnabled = !notificationSoundEnabled;
-    event.currentTarget.textContent = notificationSoundEnabled ? "Disable Notification Sound" : "Enable Notification Sound";
-  });
-}
+updateSoundToggle();
+updateNotifBadge();
+if (!sessionStorage.getItem(INSTRUCTIONS_KEY)) openWelcome();   // Feature 4: once per browser session
 
 if (missingEls.length) {
   console.error("index.html is missing elements script.js expects:", [...new Set(missingEls)]);
