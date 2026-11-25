@@ -31,7 +31,7 @@ function offlineClient() {
   const ch = { on() { return ch; }, subscribe() { return ch; } };
   return {
     rpc: fail, from: () => chain, channel: () => ch,
-    auth: { signInWithPassword: fail, signOut: async () => ({ error: null }), getSession: async () => ({ data: { session: null } }), onAuthStateChange() {} },
+    auth: { signInWithPassword: fail, signUp: fail, signOut: async () => ({ error: null }), getSession: async () => ({ data: { session: null } }), getUser: async () => ({ data: { user: null }, error: err }), onAuthStateChange() {} },
   };
 }
 
@@ -250,6 +250,12 @@ async function refreshHeroTicket() {
 // Place an order through the server function (it validates and recomputes the total).
 // Returns the saved order (with its DB-assigned ticket number) or null on failure.
 async function placeOrder(o) {
+  const verifiedStudent = await getVerifiedStudent();
+  if (!verifiedStudent) {
+    openStudentAuth();
+    toast("Sign in with your verified school email before placing an order.");
+    return null;
+  }
   const { data, error } = await supabaseClient.rpc("place_order", {
     p_name: o.name,
     p_section: o.section,
@@ -267,6 +273,57 @@ async function placeOrder(o) {
   const row = Array.isArray(data) ? data[0] : data;
   return row ? mapRow(row) : null;
 }
+
+function isOfficialSchoolEmail(email) {
+  return /^[^\s@]+@barcelonaacademy\.edu\.ph$/i.test(String(email || "").trim());
+}
+async function getVerifiedStudent() {
+  const { data, error } = await supabaseClient.auth.getUser();
+  const user = data?.user;
+  return !error && user && user.email_confirmed_at && isOfficialSchoolEmail(user.email) ? user : null;
+}
+
+const studentAuthOverlay = el("studentAuthOverlay");
+const studentAuthMessage = el("studentAuthMessage");
+function openStudentAuth() { studentAuthOverlay.hidden = false; studentAuthOverlay.classList.add("is-open"); }
+function closeStudentAuth() { studentAuthOverlay.classList.remove("is-open"); studentAuthOverlay.hidden = true; }
+async function refreshStudentAccount() {
+  const user = await getVerifiedStudent();
+  el("studentAccountBtn").textContent = user ? "School Account ✓" : "Student Sign In";
+  el("studentSignOutBtn").hidden = !user;
+  if (user) studentAuthMessage.textContent = `Verified: ${user.email}`;
+  return user;
+}
+el("studentAccountBtn").addEventListener("click", openStudentAuth);
+el("closeStudentAuthBtn").addEventListener("click", closeStudentAuth);
+el("studentAuthOverlay").addEventListener("click", (event) => { if (event.target === studentAuthOverlay) closeStudentAuth(); });
+el("studentAuthForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = el("studentAuthEmail").value.trim().toLowerCase();
+  const password = el("studentAuthPassword").value;
+  if (!isOfficialSchoolEmail(email)) { studentAuthMessage.textContent = "Use your @barcelonaacademy.edu.ph school email."; return; }
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { studentAuthMessage.textContent = error.message; return; }
+  const user = await refreshStudentAccount();
+  if (!user) { studentAuthMessage.textContent = "Check your school inbox and verify your email, then sign in again."; await supabaseClient.auth.signOut(); return; }
+  studentAuthMessage.textContent = `Signed in as ${user.email}`;
+  closeStudentAuth();
+});
+el("studentSignUpBtn").addEventListener("click", async () => {
+  const email = el("studentAuthEmail").value.trim().toLowerCase();
+  const password = el("studentAuthPassword").value;
+  if (!isOfficialSchoolEmail(email)) { studentAuthMessage.textContent = "Use your @barcelonaacademy.edu.ph school email."; return; }
+  if (password.length < 8) { studentAuthMessage.textContent = "Choose a password with at least 8 characters."; return; }
+  const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: window.location.href.split("#")[0] } });
+  studentAuthMessage.textContent = error ? error.message : "Account created. Open the verification link sent to your school email, then sign in here.";
+});
+el("studentSignOutBtn").addEventListener("click", async () => {
+  const { error } = await supabaseClient.auth.signOut();
+  studentAuthMessage.textContent = error ? error.message : "Signed out.";
+  await refreshStudentAccount();
+});
+supabaseClient.auth.onAuthStateChange(() => { setTimeout(refreshStudentAccount, 0); });
+refreshStudentAccount();
 
 // STAFF ONLY: change an order. RLS silently ignores updates from non-staff, so we check a row came back.
 async function updateOrder(id, patch, what) {
