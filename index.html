@@ -26,6 +26,7 @@
     <button class="navbtn" data-view="tracker" id="navTracker">Orders</button>
     <button class="navbtn navbtn--staff" data-view="admin" id="navAdmin">Staff Panel</button>
     <button class="navbtn" type="button" id="helpInstructionsBtn">Help / Instructions</button>
+    <button class="navbtn" type="button" id="studentAccountBtn">Student Sign In</button>
   </nav>
 
   <button class="cartFab" id="cartFab" aria-label="Open cart">
@@ -154,6 +155,18 @@
 </div>
 
 <!-- ============ CHECKOUT MODAL ============ -->
+<div class="modalOverlay" id="studentAuthOverlay" role="dialog" aria-modal="true" aria-labelledby="studentAuthTitle" hidden>
+  <section class="modal">
+    <div class="modal__head"><h2 id="studentAuthTitle">Student Account</h2><button class="drawer__close" id="closeStudentAuthBtn" type="button" aria-label="Close">✕</button></div>
+    <form class="modal__body" id="studentAuthForm">
+      <p>Use your verified school email address to order.</p>
+      <label class="field">School email<input type="email" id="studentAuthEmail" autocomplete="email" required placeholder="you@barcelonaacademy.edu.ph"></label>
+      <label class="field">Password<input type="password" id="studentAuthPassword" autocomplete="current-password" required minlength="8"></label>
+      <p id="studentAuthMessage" role="status" aria-live="polite"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn--primary" type="submit" id="studentSignInBtn">Sign In</button><button class="smallBtn" type="button" id="studentSignUpBtn">Create Account</button><button class="smallBtn" type="button" id="studentSignOutBtn" hidden>Sign Out</button></div>
+    </form>
+  </section>
+</div>
 <div class="modalOverlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" hidden>
   <section class="modal">
     <div class="modal__head"><h2 id="welcomeTitle">How to Use Our Pre-Ordering System</h2></div>
