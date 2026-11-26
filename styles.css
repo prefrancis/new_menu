@@ -1,44 +1,88 @@
 /* =========================================================
-   v2/v3 ADDITIONS — auth, notifications, welcome, cancellation
+   v3 ADDITIONS â€” MOBILE-FIXED VERSION
+
+   HOW TO USE:
+   1. In styles.css, find the block you appended earlier that
+      starts with "v2/v3 ADDITIONS" and DELETE that whole block.
+   2. Paste THIS block at the very END of styles.css â€” after
+      everything else, NOT inside any @media { ... } block.
+   3. This version uses plain hex colors instead of CSS
+      variables (var(--...)), so it works even if your theme
+      tokens have different names, and includes mobile fixes.
 ========================================================= */
-.helpBtn{ background:rgba(255,255,255,.22); border:none; color:var(--white);
-  width:38px; height:38px; border-radius:50%; font-size:15px; flex:none; font-weight:800; }
-.authChip{ background:var(--white); color:var(--purple-dark); border:none; border-radius:999px;
+
+/* Help (?) + school-email buttons in the topbar */
+.helpBtn{ background:rgba(255,255,255,.22); border:none; color:#fff;
+  width:38px; height:38px; border-radius:50%; font-size:15px; flex:none;
+  font-weight:800; cursor:pointer; }
+.authChip{ background:#fff; color:#6A1B8A; border:none; border-radius:999px;
   padding:8px 14px; font-weight:800; font-size:12.5px; max-width:180px; flex:none;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.authChip.is-in{ background:var(--cyan-soft); }
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; font-family:inherit; }
+.authChip.is-in{ background:#CFF6FF; color:#0F4C63; }
 
+/* Notification badge on the staff nav button */
 .navbtn{ position:relative; }
-.navBadge{ position:absolute; top:-5px; right:-5px; background:var(--pink); color:var(--white);
+.navBadge{ position:absolute; top:-5px; right:-5px; background:#E8399F; color:#fff;
   min-width:20px; height:20px; border-radius:999px; font-size:11px; font-weight:800;
-  display:inline-flex; align-items:center; justify-content:center; padding:0 5px; border:2px solid var(--white); }
+  display:inline-flex; align-items:center; justify-content:center; padding:0 5px;
+  border:2px solid #fff; }
 
+/* Staff dashboard header buttons + new-order badge */
 .adminHeadBtns{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
-.notifBadge{ background:var(--gold); color:var(--outline); font-weight:800; font-size:13px;
+.notifBadge{ background:#FFC93C; color:#4A1608; font-weight:800; font-size:13px;
   border-radius:999px; padding:5px 13px; align-self:center; }
-.notifBadge.is-pulse{ animation:pulse 1s ease infinite; }
-@keyframes pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+.notifBadge.is-pulse{ animation:v3pulse 1s ease infinite; }
+@keyframes v3pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
 
+/* New order statuses on cards */
 .badge--confirmed{ background:#FFE9A8; color:#8A5A00; }
 .badge--cancelled{ background:#FBD8DE; color:#B01F3C; }
 .orderCard--cancelled{ opacity:.72; border-style:dashed; }
-.orderCard__email{ font-size:12px; color:var(--purple-dark); font-weight:800; margin-top:2px; }
+.orderCard__email{ font-size:12px; color:#6A1B8A; font-weight:800; margin-top:2px;
+  word-break:break-all; }
 .orderCard__cancelTime{ color:#B01F3C; font-weight:800; }
 
-.smallBtn--cancel{ background:var(--pink-soft); color:var(--pink-dark); border-color:var(--pink-soft); }
-.smallBtn--cancel:hover{ border-color:var(--pink-dark); }
+/* Student cancel button + confirm row */
+.smallBtn--cancel{ background:#FBD8E9; color:#B0236B; border-color:#FBD8E9; }
+.smallBtn--cancel:hover{ border-color:#B0236B; }
+.confirmBtnRow{ display:flex; gap:10px; flex-wrap:wrap; }
+.confirmBtnRow .btn{ flex:1; min-width:120px; }
 
-.confirmBtnRow{ display:flex; gap:10px; }
-.confirmBtnRow .btn{ flex:1; }
-
+/* Welcome / instructions modal */
 .modal--welcome{ max-width:520px; }
 .welcomeBody{ font-size:14px; line-height:1.55; }
 .welcomeBody p{ margin-bottom:10px; }
 .welcomeSteps{ margin:0 0 12px; padding-left:22px; display:flex; flex-direction:column; gap:10px; }
-.welcomeSteps li strong{ color:var(--purple-dark); display:block; }
-.welcomeThanks{ text-align:center; color:var(--purple-dark); font-size:14.5px; }
+.welcomeSteps li strong{ color:#6A1B8A; display:block; }
+.welcomeThanks{ text-align:center; color:#6A1B8A; font-size:14.5px; }
 
+/* =========================================================
+   MOBILE FIXES â€” stops the topbar from overflowing and
+   keeps the new buttons/modals usable on small screens
+========================================================= */
 @media(max-width:819px){
-  .authChip{ max-width:110px; font-size:11px; padding:7px 10px; }
-  .helpBtn{ width:34px; height:34px; }
+  .topbar{ flex-wrap:nowrap; gap:6px; }
+  .topbar__brand{ min-width:0; }
+  .topbar__name{ min-width:0; }
+  .topbar__name small{ display:none; }
+  .helpBtn{ width:34px; height:34px; font-size:13px; flex:0 0 auto; }
+  .authChip{ max-width:104px; font-size:11px; padding:7px 10px; flex:0 0 auto; }
+  .cartFab{ flex:0 0 auto; }
+
+  /* Modals: never taller than the screen, always scrollable inside */
+  .modal{ max-height:86dvh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .modal--welcome{ max-width:none; }
+  .welcomeSteps{ padding-left:18px; gap:8px; }
+  .welcomeBody{ font-size:13.5px; }
+
+  /* Admin rows wrap instead of overflowing sideways */
+  .adminHeadBtns{ justify-content:flex-start; }
+  .adminControls{ flex-wrap:wrap; gap:8px; }
+  .orderCard__foot{ flex-wrap:wrap; gap:8px; }
+}
+
+/* Extra safety for very small phones */
+@media(max-width:360px){
+  .authChip{ max-width:84px; font-size:10px; }
+  .helpBtn{ width:30px; height:30px; }
 }
